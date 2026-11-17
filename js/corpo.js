@@ -1,0 +1,33 @@
+// Figura anatomica (fronte e retro): i muscoli si illuminano in base alle serie della settimana.
+const D = {"outL": "M100 8 C84 8 77 19 77 33 C77 45 82 55 89 60 L89 67 C81 71 70 73 58 77 C46 81 40 91 38 105 C36 120 34 134 32 148 C30 162 28 176 26 190 C24 206 22 221 22 235 C20 245 21 255 26 258 C30 259 32 249 34 239 C38 223 42 207 44 193 C46 179 48 165 50 151 C52 140 56 125 60 117 C63 140 66 170 68 196 C66 213 64 224 64 236 C62 262 62 290 66 318 C66 334 64 352 66 372 C68 391 70 403 72 411 C70 421 66 429 70 434 L92 434 C92 426 90 418 90 410 C90 392 92 372 92 350 C92 336 94 326 94 316 C94 290 96 268 98 254 L100 252", "outR": "M 100 8 C 116 8 123 19 123 33 C 123 45 118 55 111 60 L 111 67 C 119 71 130 73 142 77 C 154 81 160 91 162 105 C 164 120 166 134 168 148 C 170 162 172 176 174 190 C 176 206 178 221 178 235 C 180 245 179 255 174 258 C 170 259 168 249 166 239 C 162 223 158 207 156 193 C 154 179 152 165 150 151 C 148 140 144 125 140 117 C 137 140 134 170 132 196 C 134 213 136 224 136 236 C 138 262 138 290 134 318 C 134 334 136 352 134 372 C 132 391 130 403 128 411 C 130 421 134 429 130 434 L 108 434 C 108 426 110 418 110 410 C 110 392 108 372 108 350 C 108 336 106 326 106 316 C 106 290 104 268 102 254 L 100 252", "front": {"spalle": ["M58 78 C46 80 39 92 38 106 C38 118 40 126 44 132 C48 121 53 110 60 101 C63 93 63 84 58 78Z"], "petto": ["M62 92 C70 85 86 85 98 89 L98 124 C88 132 72 132 62 124 C58 114 58 102 62 92Z"], "bicipiti": ["M48 128 C40 138 38 160 42 178 C46 182 50 178 52 170 C54 156 54 140 48 128Z"], "avambracci": ["M41 186 C33 200 28 218 27 234 L33 235 C39 220 44 204 46 190Z"], "addome": ["M86 133 h12 v18 h-12 Z", "M85 155 h13 v19 h-13 Z", "M85 178 h13 v20 h-13 Z", "M86 202 L98 202 L98 238 C92 232 88 220 86 202Z", "M66 134 C71 152 76 176 80 198 C83 211 84 222 82 230 C74 218 68 206 66 196 C66 172 64 152 66 134Z"], "quadricipiti": ["M66 250 C62 272 62 298 68 318 C74 318 78 300 78 280 C78 266 74 254 66 250Z", "M80 250 C74 270 74 296 80 316 C86 300 88 276 86 254Z", "M88 290 C84 302 84 314 90 322 C96 318 96 300 92 286Z", "M90 252 C96 262 98 276 94 290 C90 280 88 266 90 252Z"], "polpacci": ["M70 330 C66 350 66 372 72 396 C76 380 78 356 76 334Z", "M88 332 C92 350 92 368 88 388 C84 372 84 350 88 332Z"]}, "back": {"dorso": ["M100 64 C92 70 76 74 62 78 C72 84 86 96 92 120 C96 140 98 150 100 156 Z", "M62 112 C66 140 72 168 84 196 C90 200 96 196 98 186 L98 162 C90 150 78 128 66 108Z", "M64 96 C70 92 82 96 88 108 C82 116 72 118 64 112Z"], "spalle": ["M58 78 C46 80 39 92 38 106 C38 118 40 126 44 132 C48 121 53 110 60 101 C63 93 63 84 58 78Z"], "tricipiti": ["M44 132 C38 146 36 164 40 182 C46 182 52 172 52 158 C52 146 50 136 44 132Z"], "avambracci": ["M41 186 C33 200 28 218 27 234 L33 235 C39 220 44 204 46 190Z"], "lombari": ["M90 162 L98 162 L98 236 L88 236 C86 214 86 186 90 162Z"], "glutei": ["M66 238 C66 256 74 272 98 270 L98 238 C88 231 76 230 66 238Z"], "femorali": ["M66 278 C64 296 68 314 74 322 C80 312 82 294 80 278Z", "M82 278 C86 296 92 314 94 320 C98 304 98 288 96 276Z"], "polpacci": ["M68 334 C62 350 64 370 72 382 C80 372 82 352 80 336Z", "M82 336 C80 352 82 372 90 380 C94 366 94 348 90 334Z"]}, "fibF": "<path d=\"M64 100 C74 98 86 100 96 106 M62 110 C74 108 86 112 96 118 M66 120 C76 120 86 122 94 126\" stroke=\"#021020\" stroke-opacity=\"0.35\" stroke-width=\"0.8\" fill=\"none\"/><path d=\"M70 262 C70 280 70 298 72 312 M82 262 C80 280 80 296 81 310\" stroke=\"#021020\" stroke-opacity=\"0.3\" stroke-width=\"0.8\" fill=\"none\"/>", "fibB": "<path d=\"M70 120 C76 140 82 162 90 182 M76 112 C82 132 88 150 94 168\" stroke=\"#021020\" stroke-opacity=\"0.3\" stroke-width=\"0.8\" fill=\"none\"/>"};
+
+const NOMI = { petto: "Petto", spalle: "Spalle", bicipiti: "Bicipiti", tricipiti: "Tricipiti", avambracci: "Avambracci", addome: "Addome",
+  dorso: "Dorso", lombari: "Lombari", glutei: "Glutei", quadricipiti: "Quadricipiti", femorali: "Femorali", polpacci: "Polpacci" };
+export { NOMI };
+// livello: 0 spento, 1 tenue (1-4 serie), 2 metà (5-9), 3 pieno (10+)
+export function livello(serie) { return serie >= 10 ? 3 : serie >= 5 ? 2 : serie >= 1 ? 1 : 0; }
+function defs(p) {
+  return `<defs>
+<linearGradient id="${p}body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A0C11" stop-opacity="0.9"/><stop offset="1" stop-color="#1E0608" stop-opacity="0.6"/></linearGradient>
+<linearGradient id="${p}l3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9AA4"/><stop offset="1" stop-color="#D9122A"/></linearGradient>
+<linearGradient id="${p}l2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF2E43" stop-opacity="0.75"/><stop offset="1" stop-color="#9E0E1F" stop-opacity="0.55"/></linearGradient>
+<linearGradient id="${p}l1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF2E43" stop-opacity="0.28"/><stop offset="1" stop-color="#FF2E43" stop-opacity="0.1"/></linearGradient>
+<linearGradient id="${p}l0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF2E43" stop-opacity="0.06"/><stop offset="1" stop-color="#FF2E43" stop-opacity="0.02"/></linearGradient>
+<filter id="${p}glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<radialGradient id="${p}base" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FF2E43" stop-opacity="0.45"/><stop offset="1" stop-color="#FF2E43" stop-opacity="0"/></radialGradient>
+</defs>`;
+}
+function figura(gruppi, fib, liv, p) {
+  const half = Object.entries(gruppi).map(([k, ds]) => {
+    const l = liv[k] || 0;
+    const st = `fill="url(#${p}l${l})" stroke="${l ? "#FF6B7A" : "#5A1A20"}" stroke-opacity="${l ? 0.8 : 0.5}" stroke-width="0.8"${l === 3 ? ` filter="url(#${p}glow)"` : ""}`;
+    return ds.map((d) => `<path d="${d}" ${st}><title>${NOMI[k]}</title></path>`).join("");
+  }).join("") + fib;
+  return `<svg width="170" height="379" viewBox="0 0 200 446" role="img" aria-label="Muscoli allenati">${defs(p)}
+<ellipse cx="100" cy="434" rx="70" ry="9" fill="url(#${p}base)"/><ellipse cx="100" cy="434" rx="56" ry="6" fill="none" stroke="#FF2E43" stroke-opacity="0.6"/>
+<path d="${D.outL}" fill="url(#${p}body)" stroke="rgba(255,140,150,0.55)" stroke-width="1"/><path d="${D.outR}" fill="url(#${p}body)" stroke="rgba(255,140,150,0.55)" stroke-width="1"/>
+<g>${half}</g><g transform="translate(200 0) scale(-1 1)">${half}</g></svg>`;
+}
+export function corpo(liv) {
+  return `<div class="corpo" id="corpo3d"><div class="ruota"><div class="lato">${figura(D.front, D.fibF, liv, "f")}</div><div class="lato retro">${figura(D.back, D.fibB, liv, "b")}</div></div></div>`;
+}

@@ -1,0 +1,16 @@
+{
+  "name": "T.E.S.T.O.",
+  "short_name": "T.E.S.T.O.",
+  "description": "Allenamenti, alimentazione, promemoria e assistente IA basati sugli studi.",
+  "lang": "it",
+  "start_url": "./#oggi",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080304",
+  "theme_color": "#080304",
+  "icons": [
+    { "src": "icone/icona-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icone/icona-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icone/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

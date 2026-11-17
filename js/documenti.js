@@ -16,10 +16,10 @@ const DOC = {
 <p>Non chiediamo nome, telefono, posizione o foto. Le conversazioni con l'assistente restano solo sul tuo telefono finché l'app è aperta e non vengono salvate sul server.</p>
 <h4>3. Perché</h4><ul><li>Far funzionare l'app: account, salvataggi, calendario, promemoria (contratto).</li><li>Calcolare fabbisogni e piani personalizzati (consenso esplicito ai dati sulla salute, revocabile).</li><li>Rispondere con l'assistente IA (consenso, revocabile).</li><li>Sicurezza e prevenzione di abusi (interesse legittimo).</li></ul>
 <p>Niente pubblicità, niente vendita di dati, niente addestramento di modelli di IA con i tuoi dati.</p>
-<h4>4. L'assistente IA</h4><p>Le risposte sono <b>generate automaticamente da un'intelligenza artificiale</b>, sempre indicate come tali, e possono contenere errori. L'assistente riceve la domanda e i dati del profilo necessari, <b>senza email</b>. Modello: Mistral AI (Parigi, Francia); l'uso dei dati per addestrare i modelli è disattivato.</p>
+<h4>4. L'assistente IA</h4><p>Le risposte sono <b>generate automaticamente da un'intelligenza artificiale</b>, sempre indicate come tali, e possono contenere errori. L'assistente riceve la domanda e i dati del profilo necessari, <b>senza email</b>. Fornitore: Groq Inc. (USA), modelli aperti (GPT-OSS). Secondo le condizioni di Groq le richieste non vengono usate per addestrare modelli. I dati vengono trasferiti negli Stati Uniti, che per la Svizzera non hanno un livello di protezione equivalente: il trasferimento avviene solo con il tuo consenso esplicito all'assistente IA (art. 17 cpv. 1 lett. a LPD), che puoi revocare in ogni momento in Profilo → Privacy.</p>
 <h4>5. Fornitori (responsabili del trattamento)</h4><ul>
 <li><b>Supabase</b> – database e accesso, server in ${REG}.</li>
-<li><b>Mistral AI</b> (Francia) – modello dell'assistente IA.</li>
+<li><b>Groq</b> (Groq Inc., USA) – modello dell'assistente IA; riceve solo domanda, note dell'archivio e dati del profilo necessari, senza email.</li>
 <li><b>GitHub</b> (GitHub Inc., USA) – pubblica i file dell'app. Non riceve i tuoi dati dell'app, ma vede l'indirizzo IP quando apri l'app.</li>
 <li><b>Apple, Google o Mozilla</b> – consegnano le notifiche al telefono; possono trovarsi anche negli USA. Per questo il testo dei promemoria contiene solo nome della voce e ora, senza dati sulla salute.</li>
 <li><b>jsDelivr / GitHub</b> – immagini degli esercizi (vedono l'indirizzo IP).</li></ul>
@@ -50,7 +50,7 @@ const DOC = {
 <li><b>Esercizi (immagini e istruzioni):</b> Free Exercise DB (yuhonas/free-exercise-db), pubblico dominio (Unlicense).</li>
 <li><b>Caratteri:</b> Inter, Unbounded, JetBrains Mono, Orbitron – SIL Open Font License.</li>
 <li><b>Archivio scientifico:</b> sintesi originali basate su studi pubblicati (PubMed, Europe PMC, OpenAlex), citati per autore e anno.</li>
-<li><b>Assistente IA:</b> Mistral AI.</li></ul>`],
+<li><b>Assistente IA:</b> Groq (modelli GPT-OSS).</li></ul>`],
 };
 export function mostra(el, id) {
   const d = DOC[id] || DOC.privacy;

@@ -157,7 +157,7 @@ export async function ultimaVolta(esercizio, escludiSessione) {
 }
 export async function serieDal(dataISO) {
   if (!ONLINE) return L.get("serie", []).filter((s) => s.creato >= dataISO);
-  const { data, error } = await sb.from("serie").select("esercizio,creato").gte("creato", dataISO); err(error); return data;
+  const { data, error } = await sb.from("serie").select("esercizio,creato,kg,ripetizioni").gte("creato", dataISO); err(error); return data;
 }
 
 // ---------- diario alimentare ----------
@@ -184,12 +184,12 @@ export async function rimuoviPush(endpoint) {
 export async function chiediAssistente(corpo) {
   if (!ONLINE) {
     await new Promise((r) => setTimeout(r, 900));
-    return { testo: "**Modalità prova.** L'assistente risponde davvero quando l'app è collegata al server (Supabase e Mistral).\n\nNel frattempo puoi provare tutto il resto: profilo, calendario, allenamenti e diario." };
+    return { testo: "**Modalità prova.** L'assistente risponde davvero quando l'app è collegata al server (Supabase e IA).\n\nNel frattempo puoi provare tutto il resto: profilo, calendario, allenamenti e diario." };
   }
   const { data, error } = await sb.functions.invoke("assistente", { body: corpo });
   if (error) {
     let msg = "L'assistente non risponde. Riprova tra poco.";
-    try { const j = await error.context.json(); if (j.errore) msg = j.errore; } catch {}
+    try { const j = await error.context.json(); if (j.errore) msg = j.errore + (j.dettaglio ? ` (${String(j.dettaglio).slice(0, 160)})` : ""); } catch {}
     throw new Error(msg);
   }
   return data;

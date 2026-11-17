@@ -24,7 +24,7 @@ export async function render(el) {
   const c = S.consensi;
   if (!c.ia?.accettato) {
     el.innerHTML = `<main class="stack"><header class="head"><h1>Assistente IA</h1></header><section class="card stack-s"><p>Per usare l'assistente serve il tuo consenso.</p>
-    <p class="small muted">Le tue domande e i dati del profilo necessari, senza email, vengono elaborati da un modello di intelligenza artificiale (Mistral AI, Francia). Le risposte sono generate automaticamente e possono contenere errori.</p>
+    <p class="small muted">Le tue domande e i dati del profilo necessari, senza email, vengono elaborati da un modello di intelligenza artificiale (Groq, server negli USA). Non scrivere nomi, indirizzi o dati di salute che non servono. Le risposte sono generate automaticamente e possono contenere errori.</p>
     <button class="btn primario pieno" id="ok">Attiva l'assistente</button></section></main>`;
     $("#ok").onclick = async () => { await prova(() => db.daiConsenso("ia", true)); S.consensi = await db.consensi(); render(el); };
     return;
@@ -42,6 +42,7 @@ export async function render(el) {
   $$("[data-s]", el).forEach((b) => (b.onclick = () => invia(el, b.dataset.s)));
   attivaPiani(el);
   $("#f").onsubmit = (e) => { e.preventDefault(); const t = $("#d").value.trim(); if (t) invia(el, t); };
+  const pre = sessionStorage.getItem("testo_domanda"); if (pre) { sessionStorage.removeItem("testo_domanda"); $("#d").value = pre; }
   $("#d").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !("ontouchstart" in window)) { e.preventDefault(); $("#f").requestSubmit(); } };
   const ultimo = $("#chat").lastElementChild; ultimo?.scrollIntoView({ block: "start" });
 }
@@ -96,7 +97,7 @@ async function invia(el, testo) {
     const r = await db.chiediAssistente({
       messaggi: msgs.slice(-10).map((m) => ({ role: m.role, content: m.content })),
       note, profilo: testoProfilo(), oggi: `${GIORNI_L[ch.giorno]} ${ch.iso}`,
-      esercizi: S.esercizi.map((e) => `${e.id} | ${e.n}`).join("\n"),
+      esercizi: S.esercizi.filter((e) => e.top).map((e) => `${e.id} | ${e.n}`).join("\n"),
     });
     msgs.push({ role: "assistant", content: r.testo || "Nessuna risposta.", fonti: note.map((n) => n.t) });
   } catch (e) {

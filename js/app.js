@@ -105,7 +105,7 @@ function registrati(el) {
       <label class="check"><input type="checkbox" name="termini"> <span>Accetto le <a href="#documento/condizioni" target="_blank">Condizioni d'uso</a> e ho letto l'<a href="#documento/privacy" target="_blank">Informativa sulla privacy</a>.</span></label>
       <h3 style="margin-top:8px">Facoltativi (consigliati)</h3>
       <label class="check"><input type="checkbox" name="salute"> <span><b>Dati sulla salute e piani personalizzati.</b> Acconsento in modo esplicito che T.E.S.T.O. tratti i miei dati sulla salute (peso, misure, limitazioni) per calcolare fabbisogni e creare piani adatti a me. Posso revocarlo quando voglio.</span></label>
-      <label class="check"><input type="checkbox" name="ia"> <span><b>Assistente IA.</b> Acconsento che le mie domande e i dati del profilo necessari, senza email, siano elaborati da un modello di intelligenza artificiale (Mistral AI, Francia) per rispondere e creare piani. Le risposte sono generate automaticamente e possono contenere errori.</span></label>
+      <label class="check"><input type="checkbox" name="ia"> <span><b>Assistente IA.</b> Acconsento che le mie domande e i dati del profilo necessari, senza email, siano elaborati da un modello di intelligenza artificiale (Groq, USA) per rispondere e creare piani. Le risposte sono generate automaticamente e possono contenere errori.</span></label>
       <label class="check"><input type="checkbox" name="email_n"> <span>Voglio ricevere email sulle novità dell'app.</span></label>
     </section>
     <p id="errore" class="small warn" role="alert"></p>
@@ -263,7 +263,7 @@ function privacy(el) {
   <section class="card stack-s"><h3>I tuoi consensi</h3><ul class="lista">
   <li><b>Condizioni d'uso, informativa ed età minima</b><br><span class="xs muted">Necessari per usare l'app${c.termini ? ` · accettati il ${new Date(c.termini.creato).toLocaleDateString("it-CH")}` : ""}</span></li>
   ${sw("salute", "Dati sulla salute", "Peso, misure e limitazioni per piani personalizzati. Se lo spegni, quei dati vengono cancellati dal profilo.")}
-  ${sw("ia", "Assistente IA", "Domande e dati necessari, senza email, elaborati da Mistral AI (Francia). Mai usati per addestrare modelli: la funzione è disattivata.")}
+  ${sw("ia", "Assistente IA", "Domande e dati necessari, senza email, elaborati da Groq (USA). Non usati per addestrare modelli.")}
   ${sw("email", "Email con novità", "Al massimo una al mese.")}
   </ul></section>
   <section class="card stack-s"><h3>I tuoi diritti</h3>
@@ -302,7 +302,8 @@ const standalone = () => window.matchMedia("(display-mode: standalone)").matches
 function b64(base64) { const p = "=".repeat((4 - (base64.length % 4)) % 4); const r = atob((base64 + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...r].map((c) => c.charCodeAt(0))); }
 async function statoPush() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { supportato: false };
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 1500))]);
+  if (!reg) return { supportato: true, attivo: false };
   const sub = await reg.pushManager.getSubscription();
   return { supportato: true, attivo: !!sub && Notification.permission === "granted", sub };
 }
@@ -312,7 +313,8 @@ export async function attivaNotifiche() {
   if (!CFG.vapidPublic) { avviso("Notifiche non ancora configurate sul server."); return false; }
   const perm = await Notification.requestPermission();
   if (perm !== "granted") { avviso("Notifiche non permesse. Puoi attivarle nelle impostazioni del telefono."); return false; }
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 1500))]);
+  if (!reg) return { supportato: true, attivo: false };
   const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(CFG.vapidPublic) }));
   const ok = await prova(() => db.salvaPush(sub));
   if (ok !== undefined) { await prova(() => db.daiConsenso("promemoria", true)); S.consensi = await db.consensi(); avviso("Promemoria attivi su questo telefono."); return true; }
@@ -343,55 +345,107 @@ async function oggi(el) {
   const p = S.profilo || {};
   const ch = oraCH();
   const lun = lunediDi(ch.data);
-  el.innerHTML = `<main class="stack"><p class="muted">Caricamento…</p></main>`;
-  const [serie, voci, fattiOggi, righeDiario] = await Promise.all([
-    prova(() => db.serieDal(new Date(lun.getTime()).toISOString())), prova(() => db.voci()), prova(() => db.fatti(ch.iso, ch.iso)), prova(() => db.diario(ch.iso)),
+  el.innerHTML = `<main class="stack"><div class="scheletro" style="height:190px"></div><div class="scheletro" style="height:90px"></div><div class="scheletro" style="height:160px"></div></main>`;
+  const [serie, voci, fattiOggi, righeDiario, schede, recenti] = await Promise.all([
+    prova(() => db.serieDal(new Date(lun.getTime() - 21 * 864e5).toISOString())), prova(() => db.voci()), prova(() => db.fatti(ch.iso, ch.iso)), prova(() => db.diario(ch.iso)), prova(() => db.schede()), prova(() => db.sessioniRecenti(40)),
   ]);
-  // serie per muscolo questa settimana (primari 1, secondari 0.5)
+  // ---- dati allenamento
+  const daLun = (serie || []).filter((s) => new Date(s.creato || s.fatto || s.inizio || 0) >= lun);
   const conteggio = {};
-  for (const s of serie || []) {
+  for (const s of daLun) {
     const e = S.mappaEs.get(s.esercizio); if (!e) continue;
     e.p.forEach((m) => (conteggio[m] = (conteggio[m] || 0) + 1));
     e.s.forEach((m) => (conteggio[m] = (conteggio[m] || 0) + 0.5));
   }
   const liv = Object.fromEntries(Object.keys(NOMI).map((m) => [m, livello(conteggio[m] || 0)]));
+  const dI = (r) => new Date(r.inizio || r.creato);
+  const volume = daLun.reduce((t, s) => t + (+s.kg || 0) * (+s.ripetizioni || 0), 0);
+  const giorniAllenati = new Set((recenti || []).map((r) => isoData(dI(r))));
+  const sessSett = (recenti || []).filter((r) => dI(r) >= lun).length;
+  // settimane consecutive con almeno un allenamento
+  let streak = 0;
+  for (let w = 0; w < 12; w++) {
+    const da = new Date(lun.getTime() - w * 7 * 864e5), a = new Date(da.getTime() + 7 * 864e5);
+    if ((recenti || []).some((r) => { const d = dI(r); return d >= da && d < a; })) streak++; else if (w > 0) break;
+  }
+  const obiettivoSett = +p.allenamenti_sett || 3;
+  const inCorso = (() => { try { return JSON.parse(localStorage.getItem("testo_sessione") || "null"); } catch { return null; } })();
+  const schedaOggi = (schede || []).find((s) => s.giorno === ch.giorno);
+  const fattoOggi = giorniAllenati.has(ch.iso);
+  const prossimaScheda = !schedaOggi && (schede || []).filter((s) => s.giorno != null).sort((x, y) => ((x.giorno - ch.giorno + 7) % 7) - ((y.giorno - ch.giorno + 7) % 7))[0];
+  // ---- calendario
   const delGiorno = (voci || []).filter((v) => v.giorni?.includes(ch.giorno)).sort((a, b) => (a.ora < b.ora ? -1 : 1));
   const fattiSet = new Set((fattiOggi || []).map((f) => f.voce_id));
+  const fatteN = delGiorno.filter((v) => fattiSet.has(v.id)).length;
   const prossime = delGiorno.filter((v) => { const [h, m] = v.ora.split(":").map(Number); return h * 60 + m >= ch.minuti - 30 && !fattiSet.has(v.id); }).slice(0, 4);
+  // ---- nutrizione
   const f = fabbisogno(p);
   const { alimenti, somma } = await import("./nutrizione.js");
-  let tot = { kcal: 0, p: 0 };
+  let tot = { kcal: 0, p: 0, cho: 0, gr: 0 };
   if ((righeDiario || []).length) { try { const A = await alimenti(); tot = somma(righeDiario, A.mappa); } catch {} }
-  const pct = f ? Math.min(100, Math.round((tot.kcal / f.kcal) * 100)) : 0;
-  const C = 2 * Math.PI * 52;
+  const anello = (val, max, r, col, sp = 9) => { const C = 2 * Math.PI * r; const q = max ? Math.min(1, val / max) : 0; return `<circle cx="70" cy="70" r="${r}" stroke="rgba(255,255,255,.07)" stroke-width="${sp}" fill="none"/><circle cx="70" cy="70" r="${r}" stroke="${col}" stroke-width="${sp}" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - q)}" transform="rotate(-90 70 70)" style="filter:drop-shadow(0 0 5px ${col});transition:stroke-dashoffset 1s"/>`; };
+  const macro = f ? { cho: Math.round((f.kcal - f.p * 4 - f.kcal * 0.25) / 4), gr: Math.round((f.kcal * 0.25) / 9) } : null;
+  // ---- testi
+  const ora = ch.minuti / 60;
+  const saluto = ora < 5 ? "Notte fonda" : ora < 12 ? "Buongiorno" : ora < 18 ? "Buon pomeriggio" : "Buonasera";
+  const OBI = { massa: "Massa muscolare", forza: "Forza", definizione: "Definizione", mantenimento: "Mantenimento", salute: "Salute" };
   const CONSIGLI = [
-    "Per crescere conta arrivare vicino al cedimento con una buona tecnica, non sentire il muscolo bruciare. (Tecnica ed esercizi)",
-    "Almeno 10 serie a settimana per muscolo, divise in 2 sedute: è la base delle linee guida 2026. (Volume e frequenza)",
-    "Le proteine contano sul totale del giorno: 1,6-2,2 g per kg. Distribuirle in 3-5 pasti aiuta. (Proteine e ipertrofia)",
-    "Dormire meno di 6 ore riduce forza e recupero: il sonno è parte dell'allenamento. (Sonno, recupero e stress)",
-    "La creatina funziona se presa ogni giorno, a qualsiasi ora: niente carico obbligatorio. (Integratori)",
-    "In definizione perdi al massimo lo 0,5-1% del peso a settimana per proteggere il muscolo. (Fase di definizione)",
+    ["Vicino al cedimento", "Per crescere conta arrivare vicino al cedimento con buona tecnica, non sentire il muscolo bruciare.", "Tecnica ed esercizi"],
+    ["10 serie a settimana", "Almeno 10 serie a settimana per muscolo, divise in 2 sedute: è la base delle linee guida.", "Volume e frequenza"],
+    ["Proteine sul totale", "1,6-2,2 g per kg al giorno. Distribuirle in 3-5 pasti da 25-40 g aiuta.", "Proteine e ipertrofia"],
+    ["Il sonno allena", "Dormire meno di 6 ore riduce forza e recupero: il sonno fa parte dell'allenamento.", "Sonno, recupero e stress"],
+    ["Creatina, ogni giorno", "Funziona se presa tutti i giorni, a qualsiasi ora: niente carico obbligatorio.", "Integratori"],
+    ["Definizione lenta", "Perdi al massimo lo 0,5-1% del peso a settimana per proteggere il muscolo.", "Fase di definizione"],
+    ["Recupero tra le serie", "Sui multiarticolari pesanti 2-3 minuti di pausa fanno sollevare di più nelle serie dopo.", "Volume e frequenza"],
+    ["Carboidrati e allenamento", "Un pasto con carboidrati 1-3 ore prima migliora la qualità delle sedute lunghe.", "Alimentazione"],
   ];
-  const consiglio = CONSIGLI[(ch.data.getDate() + ch.data.getMonth()) % CONSIGLI.length];
+  const [cTit, cTesto, cFonte] = CONSIGLI[(ch.data.getDate() + ch.data.getMonth()) % CONSIGLI.length];
   const st = await statoPush().catch(() => ({}));
-  const settimana = Object.entries(conteggio).sort((a, b) => b[1] - a[1]);
-  el.innerHTML = `<main class="stack">
-  <header class="head"><div><span class="etichetta">${GIORNI_L[ch.giorno]} ${ch.data.getDate()}.${ch.data.getMonth() + 1}</span><h1>Oggi</h1></div>${logo(42)}</header>
-  ${!st.attivo && db.ONLINE ? `<button class="card row" id="notif" style="text-align:left;width:100%;color:inherit">${icona("campana", 22, 'style="color:#FF2E43"')}<span class="small"><b>Attiva i promemoria</b><br><span class="muted">Ti avviso per pasti, integratori e allenamenti.</span></span></button>` : ""}
-  <section class="card stack-s"><div class="row between"><h3>Muscoli della settimana</h3><button class="btn testo xs" id="ferma">Pausa</button></div>
-  ${corpo(liv)}
-  <p class="xs muted" style="text-align:center">Si azzera ogni lunedì · pieno = 10+ serie · metà = 5-9 · tenue = 1-4</p>
-  ${settimana.length ? `<div class="row wrap" style="gap:6px">${settimana.map(([m, n]) => `<span class="chip" style="min-height:28px">${NOMI[m]} <b class="mono">${Math.round(n)}</b></span>`).join("")}</div>` : `<p class="small muted" style="text-align:center">Nessuna serie questa settimana: inizia da Allenamento.</p>`}</section>
-  <section class="card"><div class="row" style="gap:16px">
-    <div class="anello"><svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" stroke="#4A161B" stroke-width="10" fill="none"/><circle cx="60" cy="60" r="52" stroke="#FF2E43" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}" style="filter:drop-shadow(0 0 6px #FF2E43)"/></svg><div><b class="mono" style="font-size:20px">${Math.round(tot.kcal)}</b><span class="xs muted">${f ? `di ${f.kcal} kcal` : "kcal"}</span></div></div>
-    <div class="stack-s" style="flex:1"><span class="small">Proteine <b class="mono">${Math.round(tot.p)}${f ? ` / ${f.p}` : ""} g</b></span>${f ? `<div class="barra"><span style="width:${Math.min(100, (tot.p / f.p) * 100)}%"></span></div>` : ""}<a class="btn piccolo" href="#dieta">Diario pasti</a></div></div></section>
-  <section class="card stack-s"><div class="row between"><h3>Prossimi</h3><a class="xs" href="#calendario">Tutto il giorno ›</a></div>
-  ${prossime.length ? `<ul class="timeline">${prossime.map((v) => `<li><span class="ora">${esc(v.ora)}</span><div class="voce ${v.tipo}"><b>${esc(v.titolo)}</b>${v.dettaglio ? `<br><span class="xs muted">${esc(v.dettaglio)}</span>` : ""}</div><button class="spunta" aria-pressed="false" aria-label="Segna come fatto" data-id="${v.id}">${icona("spunta", 18)}</button></li>`).join("")}</ul>` : `<p class="small muted">${delGiorno.length ? "Hai fatto tutto per oggi." : "Il calendario è vuoto."} ${delGiorno.length ? "" : `<button class="btn testo" id="tipo">Crea la giornata tipo</button>`}</p>`}</section>
-  <section class="card stack-s"><h3>Consiglio del giorno</h3><p class="small">${esc(consiglio)}</p></section>
+  const top = Object.entries(conteggio).sort((a, b) => b[1] - a[1]);
+  const deboli = Object.keys(NOMI).filter((m) => (conteggio[m] || 0) < 5 && !["avambracci", "lombari"].includes(m)).slice(0, 4);
+  const giorniSett = [1, 2, 3, 4, 5, 6, 0].map((g, i) => { const d = new Date(lun.getTime() + i * 864e5); const iso = isoData(d); return { g, iso, fatto: giorniAllenati.has(iso), oggi: iso === ch.iso, futuro: d > ch.data && iso !== ch.iso, previsto: (schede || []).some((s) => s.giorno === g) }; });
+  const durata = (sc) => Math.round(sc.esercizi.reduce((t, e) => t + (e.serie || 3) * (45 + (+e.recupero || S.mappaEs.get(e.id)?.r || 90)), 0) / 60);
+  const muscoliScheda = (sc) => [...new Set(sc.esercizi.flatMap((e) => S.mappaEs.get(e.id)?.p || []))].map((m) => NOMI[m]).slice(0, 5);
+
+  let hero;
+  if (inCorso) hero = `<a class="hero" href="#sessione"><span class="etichetta">IN CORSO</span><h2 class="hero-tit">${esc(inCorso.nome)}</h2><p class="small muted">${inCorso.esercizi.length} esercizi · iniziato alle ${new Date(inCorso.inizio).toLocaleTimeString("it-CH", { hour: "2-digit", minute: "2-digit" })}</p><span class="btn primario pieno">Riprendi l'allenamento</span></a>`;
+  else if (schedaOggi && !fattoOggi) hero = `<section class="hero"><span class="etichetta">ALLENAMENTO DI OGGI</span><h2 class="hero-tit">${esc(schedaOggi.nome)}</h2>
+    <div class="row wrap" style="gap:6px">${muscoliScheda(schedaOggi).map((m) => `<span class="tag">${m}</span>`).join("")}</div>
+    <div class="hero-dati"><div><b class="mono">${schedaOggi.esercizi.length}</b><span>esercizi</span></div><div><b class="mono">${schedaOggi.esercizi.reduce((t, e) => t + (+e.serie || 3), 0)}</b><span>serie</span></div><div><b class="mono">~${durata(schedaOggi)}'</b><span>durata</span></div></div>
+    <button class="btn primario pieno grande" id="vai">${icona("allenamento", 18)} Inizia ora</button></section>`;
+  else if (fattoOggi) hero = `<section class="hero ok"><span class="etichetta" style="color:var(--ok)">FATTO</span><h2 class="hero-tit">Allenamento completato</h2><p class="small muted">Ora conta il recupero: proteine nei pasti, acqua e sonno. ${prossimaScheda ? `Prossima: <b>${esc(prossimaScheda.nome)}</b> ${GIORNI_L[prossimaScheda.giorno].toLowerCase()}.` : ""}</p><a class="btn pieno" href="#dieta">Controlla i pasti</a></section>`;
+  else if ((schede || []).length) hero = `<section class="hero riposo"><span class="etichetta">GIORNO DI RIPOSO</span><h2 class="hero-tit">Si cresce anche oggi</h2><p class="small muted">Il muscolo si costruisce tra una seduta e l'altra. ${prossimaScheda ? `Prossima: <b>${esc(prossimaScheda.nome)}</b> ${GIORNI_L[prossimaScheda.giorno].toLowerCase()}.` : ""}</p><div class="grid2"><button class="btn pieno" id="libero">Allenati lo stesso</button><a class="btn pieno" href="#assistente">Chiedi al coach</a></div></section>`;
+  else hero = `<section class="hero"><span class="etichetta">PRIMO PASSO</span><h2 class="hero-tit">Costruiamo il tuo piano</h2><p class="small muted">Schede basate sugli studi, adattate ai tuoi ${obiettivoSett} allenamenti a settimana. Oppure fattele preparare dall'assistente.</p><div class="grid2"><a class="btn primario pieno" href="#allenamento">Crea le schede</a><a class="btn pieno" href="#assistente">Chiedi al coach</a></div></section>`;
+
+  el.innerHTML = `<main class="stack home">
+  <header class="head"><div><span class="etichetta">${GIORNI_L[ch.giorno]} ${ch.data.getDate()}.${ch.data.getMonth() + 1} · ${OBI[p.obiettivo] || "T.E.S.T.O."}</span><h1>${saluto}</h1></div>${logo(42)}</header>
+  ${hero}
+  <section class="card settimana"><div class="row between"><h3>La tua settimana</h3><span class="xs muted"><b class="mono" style="color:var(--ink)">${sessSett}</b> / ${obiettivoSett} allenamenti</span></div>
+    <div class="giorni-sett">${giorniSett.map((d) => `<div class="gs ${d.fatto ? "fatto" : ""} ${d.oggi ? "oggi" : ""} ${d.previsto && !d.fatto ? "previsto" : ""}"><span>${GIORNI[d.g]}</span><i>${d.fatto ? icona("spunta", 14) : ""}</i></div>`).join("")}</div>
+    <div class="kpi"><div><b class="mono">${streak}</b><span>${streak === 1 ? "settimana" : "settimane"} di fila</span></div><div><b class="mono">${daLun.length}</b><span>serie</span></div><div><b class="mono">${volume >= 1000 ? (volume / 1000).toFixed(1) + "t" : Math.round(volume) + "kg"}</b><span>volume</span></div></div></section>
+  ${!st.attivo && db.ONLINE ? `<button class="card row avviso-notif" id="notif">${icona("campana", 22, 'style="color:#FF2E43"')}<span class="small"><b>Attiva i promemoria</b><br><span class="muted">Ti avviso per pasti, integratori e allenamenti.</span></span><span class="red">›</span></button>` : ""}
+  <a class="card nutri" href="#dieta"><div class="anelli"><svg width="140" height="140" viewBox="0 0 140 140">${anello(tot.kcal, f?.kcal, 62, "#FF2E43", 10)}${anello(tot.p, f?.p, 48, "#FF9AA2", 9)}${anello(tot.cho, macro?.cho, 35, "#FFB35C", 8)}</svg><div class="centro"><b class="mono">${Math.round(tot.kcal)}</b><span>kcal</span></div></div>
+    <div class="stack-s" style="flex:1"><h3>Nutrizione di oggi</h3>
+    <div class="leg"><i style="background:#FF2E43"></i>Calorie <b class="mono">${Math.round(tot.kcal)}${f ? `<span class="muted">/${f.kcal}</span>` : ""}</b></div>
+    <div class="leg"><i style="background:#FF9AA2"></i>Proteine <b class="mono">${Math.round(tot.p)}${f ? `<span class="muted">/${f.p}g</span>` : "g"}</b></div>
+    <div class="leg"><i style="background:#FFB35C"></i>Carboidrati <b class="mono">${Math.round(tot.cho || 0)}${macro ? `<span class="muted">/${macro.cho}g</span>` : "g"}</b></div>
+    <span class="xs red">${(righeDiario || []).length ? `Rimangono ${f ? Math.max(0, f.p - Math.round(tot.p)) + " g di proteine" : ""} ›` : "Registra il primo pasto ›"}</span></div></a>
+  <section class="card stack-s"><div class="row between"><h3>Agenda di oggi</h3><a class="xs" href="#calendario">${fatteN}/${delGiorno.length} fatte ›</a></div>
+  ${delGiorno.length ? `<div class="barra"><span style="width:${(fatteN / delGiorno.length) * 100}%"></span></div>` : ""}
+  ${prossime.length ? `<ul class="timeline">${prossime.map((v) => `<li><span class="ora">${esc(v.ora)}</span><div class="voce ${v.tipo}"><b>${esc(v.titolo)}</b>${v.dettaglio ? `<br><span class="xs muted">${esc(v.dettaglio)}</span>` : ""}</div><button class="spunta" aria-pressed="false" aria-label="Segna come fatto" data-id="${v.id}">${icona("spunta", 18)}</button></li>`).join("")}</ul>` : `<p class="small muted">${delGiorno.length ? "Hai fatto tutto per oggi. Ottimo lavoro." : "Il calendario è vuoto."}</p>${delGiorno.length ? "" : `<button class="btn pieno" id="tipo">Crea la giornata tipo</button>`}`}</section>
+  <section class="card stack-s"><div class="row between"><h3>Muscoli allenati</h3><button class="btn testo xs" id="ferma">Pausa</button></div>
+  <div class="corpo-home">${corpo(liv)}</div>
+  ${top.length ? `<div class="row wrap" style="gap:6px">${top.slice(0, 8).map(([m, n]) => `<span class="chip" style="min-height:28px">${NOMI[m]} <b class="mono">${Math.round(n)}</b></span>`).join("")}</div>` : ""}
+  ${deboli.length && top.length ? `<p class="xs muted">Sotto le 5 serie: ${deboli.map((m) => NOMI[m]).join(", ")}.</p>` : `<p class="xs muted" style="text-align:center">Si azzera ogni lunedì · pieno = 10+ serie · metà = 5-9 · tenue = 1-4</p>`}</section>
+  <section class="consiglio"><span class="etichetta">CONSIGLIO DEL GIORNO</span><h2>${esc(cTit)}</h2><p class="small">${esc(cTesto)}</p><div class="row between"><span class="xs muted">Dall'archivio · ${esc(cFonte)}</span><a class="xs" href="#assistente" id="chiedi">Approfondisci ›</a></div></section>
+  <section class="azioni"><a href="#assistente">${icona("assistente", 22)}<span>Coach IA</span></a><a href="#dieta">${icona("dieta", 22)}<span>Pasto</span></a><a href="#allenamento">${icona("allenamento", 22)}<span>Schede</span></a><a href="#calendario">${icona("calendario", 22)}<span>Agenda</span></a></section>
   </main>`;
+  $("#vai") && ($("#vai").onclick = () => allenamento.inizia(schedaOggi));
+  $("#libero") && ($("#libero").onclick = () => allenamento.inizia({ id: null, nome: "Allenamento libero", esercizi: [] }));
+  $("#chiedi").onclick = () => sessionStorage.setItem("testo_domanda", `Spiegami meglio: ${cTit}. ${cTesto}`);
   $("#notif") && ($("#notif").onclick = async () => { if (await attivaNotifiche()) oggi(el); });
   $("#tipo") && ($("#tipo").onclick = async () => { await creaGiornataTipo(); oggi(el); });
-  $("#ferma").onclick = (e) => { const c = $("#corpo3d"); c.classList.toggle("ferma"); e.target.textContent = c.classList.contains("ferma") ? "Gira" : "Pausa"; };
+  $("#ferma").onclick = (e) => { const c = $("#corpo3d"); c?.classList.toggle("ferma"); e.target.textContent = c?.classList.contains("ferma") ? "Gira" : "Pausa"; };
   $$(".spunta", el).forEach((b) => (b.onclick = async () => { await prova(() => db.segnaFatto(b.dataset.id, ch.iso, true)); b.setAttribute("aria-pressed", "true"); setTimeout(() => oggi(el), 400); }));
 }
 

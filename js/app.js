@@ -433,10 +433,10 @@ async function oggi(el) {
   <section class="card stack-s"><div class="row between"><h3>Agenda di oggi</h3><a class="xs" href="#calendario">${fatteN}/${delGiorno.length} fatte ›</a></div>
   ${delGiorno.length ? `<div class="barra"><span style="width:${(fatteN / delGiorno.length) * 100}%"></span></div>` : ""}
   ${prossime.length ? `<ul class="timeline">${prossime.map((v) => `<li><span class="ora">${esc(v.ora)}</span><div class="voce ${v.tipo}"><b>${esc(v.titolo)}</b>${v.dettaglio ? `<br><span class="xs muted">${esc(v.dettaglio)}</span>` : ""}</div><button class="spunta" aria-pressed="false" aria-label="Segna come fatto" data-id="${v.id}">${icona("spunta", 18)}</button></li>`).join("")}</ul>` : `<p class="small muted">${delGiorno.length ? "Hai fatto tutto per oggi. Ottimo lavoro." : "Il calendario è vuoto."}</p>${delGiorno.length ? "" : `<button class="btn pieno" id="tipo">Crea la giornata tipo</button>`}`}</section>
-  <section class="card stack-s"><div class="row between"><h3>Muscoli allenati</h3><button class="btn testo xs" id="ferma">Pausa</button></div>
-  <div class="corpo-home">${corpo(liv)}</div>
+  <section class="card stack-s"><div class="row between"><h3>Muscoli allenati</h3><span class="xs muted" id="musinfo">Tocca un muscolo</span></div>
+  <div class="corpo-home">${corpo(liv, conteggio)}</div>
   ${top.length ? `<div class="row wrap" style="gap:6px">${top.slice(0, 8).map(([m, n]) => `<span class="chip" style="min-height:28px">${NOMI[m]} <b class="mono">${Math.round(n)}</b></span>`).join("")}</div>` : ""}
-  ${deboli.length && top.length ? `<p class="xs muted">Sotto le 5 serie: ${deboli.map((m) => NOMI[m]).join(", ")}.</p>` : `<p class="xs muted" style="text-align:center">Si azzera ogni lunedì · pieno = 10+ serie · metà = 5-9 · tenue = 1-4</p>`}</section>
+  ${deboli.length && top.length ? `<p class="xs muted">Sotto le 5 serie: ${deboli.map((m) => NOMI[m]).join(", ")}.</p>` : `<p class="xs muted" style="text-align:center">Serie della settimana (si azzera ogni lunedì). Obiettivo: almeno 10 per muscolo.</p>`}</section>
   <section class="consiglio"><span class="etichetta">CONSIGLIO DEL GIORNO</span><h2>${esc(cTit)}</h2><p class="small">${esc(cTesto)}</p><div class="row between"><span class="xs muted">Dall'archivio · ${esc(cFonte)}</span><a class="xs" href="#assistente" id="chiedi">Approfondisci ›</a></div></section>
   <section class="azioni"><a href="#assistente">${icona("assistente", 22)}<span>Coach IA</span></a><a href="#dieta">${icona("dieta", 22)}<span>Pasto</span></a><a href="#allenamento">${icona("allenamento", 22)}<span>Schede</span></a><a href="#calendario">${icona("calendario", 22)}<span>Agenda</span></a></section>
   </main>`;
@@ -445,7 +445,7 @@ async function oggi(el) {
   $("#chiedi").onclick = () => sessionStorage.setItem("testo_domanda", `Spiegami meglio: ${cTit}. ${cTesto}`);
   $("#notif") && ($("#notif").onclick = async () => { if (await attivaNotifiche()) oggi(el); });
   $("#tipo") && ($("#tipo").onclick = async () => { await creaGiornataTipo(); oggi(el); });
-  $("#ferma").onclick = (e) => { const c = $("#corpo3d"); c?.classList.toggle("ferma"); e.target.textContent = c?.classList.contains("ferma") ? "Gira" : "Pausa"; };
+  $$(".corpo2 .mus", el).forEach((p) => (p.onclick = () => { const m = p.dataset.m; $$(".corpo2 .mus", el).forEach((x) => x.classList.toggle("sel", x.dataset.m === m)); const n = Math.round(conteggio[m] || 0); $("#musinfo").innerHTML = `<b style="color:var(--ink)">${NOMI[m]}</b> · ${n} serie${n < 10 ? ` · ne mancano ${10 - n} per 10` : " ✓"}`; }));
   $$(".spunta", el).forEach((b) => (b.onclick = async () => { await prova(() => db.segnaFatto(b.dataset.id, ch.iso, true)); b.setAttribute("aria-pressed", "true"); setTimeout(() => oggi(el), 400); }));
 }
 

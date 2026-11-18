@@ -83,14 +83,15 @@ input::placeholder,textarea::placeholder{color:#8f6a6e}
 .anello svg{transform:rotate(-90deg)}
 .anello div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 
-.corpo{position:relative;height:330px;perspective:900px;display:flex;justify-content:center}
-.corpo svg{height:330px;width:auto}
-.corpo .ruota{position:relative;width:148px;height:330px;transform-style:preserve-3d;animation:gira 14s linear infinite}
-.corpo.ferma .ruota{animation:none}
-.corpo .lato{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.corpo .retro{transform:rotateY(180deg)}
-@keyframes gira{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
-@media (prefers-reduced-motion:reduce){.corpo .ruota{animation:none}}
+.corpo2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.corpo2 figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.corpo2 svg{width:100%;max-width:170px;height:auto;overflow:visible}
+.corpo2 figcaption{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.corpo2 polygon{stroke:#080304;stroke-width:.6;stroke-linejoin:round;transition:fill .4s}
+.corpo2 .neutro{fill:#1C0B0D}.corpo2 .testa{fill:#24100F}
+.corpo2 .mus{cursor:pointer}.corpo2 .mus.sel{stroke:#FFEEEF;stroke-width:1}
+.legenda-corpo{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font:500 11px var(--mono);color:var(--muted)}
+.legenda-corpo span{display:flex;align-items:center;gap:5px}.legenda-corpo i{width:10px;height:10px;border-radius:3px}
 
 .giorni{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .giorni button{min-height:54px;border-radius:6px;border:1px solid var(--line);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px}
@@ -160,10 +161,25 @@ input::placeholder,textarea::placeholder{color:#8f6a6e}
 .anelli .centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .anelli .centro b{font-size:22px}.anelli .centro span{font-size:11px;color:var(--muted)}
 .leg{display:flex;align-items:center;gap:8px;font-size:13px}.leg i{width:9px;height:9px;border-radius:50%;flex:none}.leg b{margin-left:auto;font-size:13px}
-.corpo-home svg{height:260px!important}
+
 .consiglio{display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:20px;border-left:3px solid var(--red);background:linear-gradient(135deg,rgba(255,46,67,.12),rgba(255,46,67,.02))}
 .consiglio h2{font-family:var(--head);font-size:17px}
 .azioni{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .azioni a{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:12px;font-weight:600}
 .azioni a svg{color:var(--red)}
 @media (max-width:370px){.nutri{flex-direction:column;align-items:stretch}.anelli{margin:0 auto}}
+
+/* ---- Scelta esercizi ---- */
+.scorri-x{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.scorri-x::-webkit-scrollbar{display:none}.scorri-x .chip{flex:none}
+.griglia-es{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.carta-es{position:relative;display:flex;flex-direction:column;padding:0;border-radius:14px;overflow:hidden;background:var(--card);border:1px solid var(--line);color:var(--ink);text-align:left}
+.carta-es:active{transform:scale(.98)}
+.carta-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#000}
+.carta-testo{display:flex;flex-direction:column;gap:2px;padding:8px 10px 10px}.carta-testo b{font-size:13px;line-height:1.25}.carta-testo span{font-size:11px;color:var(--muted)}
+.stella{position:absolute;top:6px;right:6px;background:var(--red);color:var(--on);font-size:11px;border-radius:99px;padding:2px 7px}
+.esercizio-img{object-fit:contain;background:#000}
+.vedi-es{padding:0;border:0;background:none;flex:none}
+.miniatura.grande{width:72px;height:72px;background:#000;object-fit:cover}
+.modale .picker{min-height:70vh}
+@media (min-width:520px){.griglia-es{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.barra-azione{position:sticky;bottom:-1px;z-index:2;padding:10px 0 4px;background:linear-gradient(transparent,var(--bg) 30%)}

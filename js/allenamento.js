@@ -59,7 +59,7 @@ export async function render(el, param) {
   $$("[data-inizia]", el).forEach((b) => (b.onclick = () => inizia((schede || []).find((s) => s.id === b.dataset.inizia))));
   $("#partenza") && ($("#partenza").onclick = async () => { await creaPartenza(); render(el); });
   $("#libero").onclick = () => inizia({ id: null, nome: "Allenamento libero", esercizi: [] });
-  $("#libreria").onclick = () => scegliEsercizio(null, (id) => dettaglio(id));
+  $("#libreria").onclick = () => scegliEsercizio(null, null);
 }
 
 export async function inizia(scheda) {
@@ -93,7 +93,7 @@ export async function sessione(el) {
         <input inputmode="numeric" aria-label="Ripetizioni serie ${k}" placeholder="${p?.ripetizioni ?? (e.ripetizioni || "rip")}" value="${f?.ripetizioni ?? ""}" ${f ? "disabled" : ""} data-rip>
         <button class="spunta" aria-pressed="${!!f}" aria-label="Serie ${k} fatta" data-id="${f?.id || ""}">${icona("spunta", 18)}</button></div>`);
     }
-    return `<section class="card stack-s"><div class="row">${x.img?.[0] ? imgEs(x.img[0], "miniatura", x.n) : ""}<div style="flex:1"><b>${esc(x.n)}</b><br><span class="xs muted">${e.serie || 3} × ${esc(e.ripetizioni || "8-12")} · recupero ${fmtRec(recDi(e))} · ${x.p.map((m) => NOMI[m]).join(", ")}</span></div><button class="btn testo xs" data-info="${esc(e.id)}">Come si fa</button></div>
+    return `<section class="card stack-s"><div class="row">${x.img?.[0] ? `<button class="vedi-es" data-info="${esc(e.id)}" aria-label="Vedi esecuzione">${imgEs(x.img[0], "miniatura grande", x.n)}</button>` : ""}<div style="flex:1"><b>${esc(x.n)}</b><br><span class="xs muted">${e.serie || 3} × ${esc(e.ripetizioni || "8-12")} · recupero ${fmtRec(recDi(e))} · ${x.p.map((m) => NOMI[m]).join(", ")}</span></div><button class="btn testo xs" data-info="${esc(e.id)}">Come si fa</button></div>
       <label class="row small" style="font-weight:600;flex-direction:row;align-items:center;gap:8px">Recupero ${selRec(`data-rec="${i}" style="min-height:38px;width:auto;flex:1"`, recDi(e))}</label>
       <p class="xs ${prec.length ? "" : "muted"}">${prec.length ? `<b>Ultima volta:</b> ${prec.map((p) => `${p.kg ?? "–"} kg × ${p.ripetizioni ?? "–"}`).join(" · ")}` : "Prima volta con questo esercizio: scegli un peso con cui arrivi a 1-3 ripetizioni dal cedimento."}</p>
       <div class="serie-riga xs muted"><span>#</span><span>kg</span><span>ripetizioni</span><span></span></div>${righe.join("")}
@@ -150,7 +150,7 @@ async function editor(el, id) {
     <h1>${id === "nuova" ? "Nuova scheda" : "Modifica scheda"}</h1>
     <label>Nome<input id="nome" value="${esc(s.nome)}" placeholder="Es. Upper A"></label>
     <label>Giorno<select id="giorno"><option value="">Libero</option>${ORDINE_GIORNI.map((g) => `<option value="${g}" ${s.giorno === g ? "selected" : ""}>${GIORNI_L[g]}</option>`).join("")}</select></label>
-    <ul class="lista card piatta">${s.esercizi.map((e, i) => `<li class="stack-s"><div class="row">${es(e.id).img?.[0] ? imgEs(es(e.id).img[0], "miniatura") : ""}<b style="flex:1">${esc(es(e.id).n)}</b><button class="btn testo" data-su="${i}" aria-label="Sposta su">↑</button><button class="btn testo" data-via="${i}" aria-label="Togli">${icona("cestino", 18)}</button></div>
+    <ul class="lista card piatta">${s.esercizi.map((e, i) => `<li class="stack-s"><div class="row"><button class="vedi-es" data-vedi="${esc(e.id)}" aria-label="Vedi esecuzione">${es(e.id).img?.[0] ? imgEs(es(e.id).img[0], "miniatura grande") : ""}</button><b style="flex:1">${esc(es(e.id).n)}</b><button class="btn testo" data-su="${i}" aria-label="Sposta su">↑</button><button class="btn testo" data-via="${i}" aria-label="Togli">${icona("cestino", 18)}</button></div>
       <div class="grid3"><label>Serie<input inputmode="numeric" data-serie="${i}" value="${esc(e.serie)}"></label><label>Ripetizioni<input data-rip="${i}" value="${esc(e.ripetizioni)}"></label><label>Recupero${selRec(`data-recs="${i}"`, recDi(e))}</label></div></li>`).join("") || `<li class="small muted">Nessun esercizio.</li>`}</ul>
     <button class="btn pieno" id="agg">${icona("piu", 16)} Aggiungi esercizio</button>
     <button class="btn primario pieno" id="salva">Salva scheda</button>
@@ -158,6 +158,7 @@ async function editor(el, id) {
     const leggi = () => { s.nome = $("#nome").value; s.giorno = $("#giorno").value === "" ? null : +$("#giorno").value; $$("[data-serie]").forEach((x) => (s.esercizi[+x.dataset.serie].serie = +x.value || 3)); $$("[data-rip]").forEach((x) => (s.esercizi[+x.dataset.rip].ripetizioni = x.value)); $$("[data-recs]").forEach((x) => (s.esercizi[+x.dataset.recs].recupero = +x.value)); };
     $$("[data-via]").forEach((b) => (b.onclick = () => { leggi(); s.esercizi.splice(+b.dataset.via, 1); disegna(); }));
     $$("[data-su]").forEach((b) => (b.onclick = () => { leggi(); const i = +b.dataset.su; if (i > 0) [s.esercizi[i - 1], s.esercizi[i]] = [s.esercizi[i], s.esercizi[i - 1]]; disegna(); }));
+    $$("[data-vedi]").forEach((b) => (b.onclick = () => dettaglio(b.dataset.vedi)));
     $("#agg").onclick = () => { leggi(); scegliEsercizio(null, (eid) => { s.esercizi.push({ id: eid, serie: 3, ripetizioni: "8-12", recupero: es(eid).r }); chiudiModale(); disegna(); }); };
     $("#salva").onclick = async () => { leggi(); if (!s.nome.trim()) return avviso("Dai un nome alla scheda."); const ok = await prova(() => db.salvaScheda(s), "Scheda salvata."); if (ok !== undefined) location.hash = "#allenamento"; };
     $("#elimina") && ($("#elimina").onclick = async () => { if (await conferma("Elimino questa scheda? Lo storico degli allenamenti resta.", "Elimina", true)) { await prova(() => db.eliminaScheda(s.id)); location.hash = "#allenamento"; } });
@@ -166,44 +167,51 @@ async function editor(el, id) {
 }
 
 // ---------- libreria esercizi ----------
+const statoPicker = { q: "", cat: "Tutti", att: "Tutti", limite: 40 };
 export function scegliEsercizio(muscolo, scelto) {
+  const st = statoPicker;
+  if (muscolo !== undefined && muscolo !== st.ultimoMuscolo) { st.filtro = muscolo; st.ultimoMuscolo = muscolo; }
   const CATS = ["Tutti", "Forza", "Powerlifting", "Sollevamento olimpico", "Pliometria", "Stretching e mobilità", "Cardio", "Strongman"];
   const ATTREZZI = ["Tutti", ...new Set(S.esercizi.map((e) => e.a))];
-  apriModale(`<div class="stack"><div class="row between"><h2>Esercizi <span class="xs muted">(${S.esercizi.length})</span></h2><button class="btn piccolo" data-chiudi>Chiudi</button></div>
-  <input id="q" placeholder="Cerca (es. panca, squat, curl, lat)" autocomplete="off">
-  <div class="row wrap" style="gap:6px">${Object.entries(NOMI).map(([k, n]) => `<button class="chip" data-m="${k}" aria-pressed="${k === muscolo}">${n}</button>`).join("")}</div>
-  <div class="grid2"><label>Tipo<select id="cat">${CATS.map((c) => `<option>${c}</option>`).join("")}</select></label><label>Attrezzo<select id="att">${ATTREZZI.map((c) => `<option>${esc(c)}</option>`).join("")}</select></label></div>
-  <p class="xs muted" id="conta"></p><ul class="lista" id="ris"></ul><button class="btn pieno" id="altri" hidden>Mostra altri</button></div>`, (m) => {
-    let filtro = muscolo, limite = 60;
+  apriModale(`<div class="stack picker"><div class="row between"><h2>Esercizi <span class="xs muted">(${S.esercizi.length})</span></h2><button class="btn piccolo" data-chiudi>Chiudi</button></div>
+  <input id="q" placeholder="Cerca (es. panca, squat, curl, lat)" autocomplete="off" value="${esc(st.q)}">
+  <div class="scorri-x">${Object.entries(NOMI).map(([k, n]) => `<button class="chip" data-m="${k}" aria-pressed="${k === st.filtro}">${n}</button>`).join("")}</div>
+  <div class="grid2"><label>Tipo<select id="cat">${CATS.map((c) => `<option ${c === st.cat ? "selected" : ""}>${c}</option>`).join("")}</select></label><label>Attrezzo<select id="att">${ATTREZZI.map((c) => `<option ${c === st.att ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label></div>
+  <p class="xs muted" id="conta"></p><div class="griglia-es" id="ris"></div><button class="btn pieno" id="altri" hidden>Mostra altri</button></div>`, (m) => {
     const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const mostra = () => {
-      const q = norm($("#q", m).value).split(/\s+/).filter(Boolean);
-      const cat = $("#cat", m).value, att = $("#att", m).value;
-      const r = S.esercizi.filter((e) => (!filtro || e.p.includes(filtro)) && (cat === "Tutti" || e.c === cat) && (att === "Tutti" || e.a === att)
+      const q = norm(st.q).split(/\s+/).filter(Boolean);
+      const r = S.esercizi.filter((e) => (!st.filtro || e.p.includes(st.filtro)) && (st.cat === "Tutti" || e.c === st.cat) && (st.att === "Tutti" || e.a === st.att)
         && q.every((w) => norm(e.n + " " + e.en).includes(w)))
         .sort((a, b) => (b.top - a.top) || a.n.localeCompare(b.n));
-      $("#conta", m).textContent = `${r.length} esercizi`;
-      $("#ris", m).innerHTML = r.slice(0, limite).map((e) => `<li><button class="row" data-id="${esc(e.id)}" style="width:100%;background:none;border:0;text-align:left;padding:0">${e.img?.[0] ? imgEs(e.img[0], "miniatura") : ""}<span><b>${esc(e.n)}</b>${e.top ? ' <span class="xs red">★</span>' : ""}<br><span class="xs muted">${e.p.map((x) => NOMI[x]).join(", ")} · ${esc(e.a)}</span></span></button></li>`).join("") || `<li class="small muted">Nessun esercizio trovato.</li>`;
-      $("#altri", m).hidden = r.length <= limite;
-      $$("[data-id]", m).forEach((b) => (b.onclick = () => scelto(b.dataset.id)));
+      $("#conta", m).textContent = `${r.length} esercizi · tocca per vedere l'esecuzione`;
+      $("#ris", m).innerHTML = r.slice(0, st.limite).map((e) => `<button class="carta-es" data-id="${esc(e.id)}">${e.img?.[0] ? imgEs(e.img[0], "carta-img", e.n) : `<span class="carta-img"></span>`}${e.top ? '<span class="stella">★</span>' : ""}<span class="carta-testo"><b>${esc(e.n)}</b><span>${e.p.map((x) => NOMI[x]).join(", ")} · ${esc(e.a)}</span></span></button>`).join("") || `<p class="small muted">Nessun esercizio trovato.</p>`;
+      $("#altri", m).hidden = r.length <= st.limite;
+      $$("[data-id]", m).forEach((b) => (b.onclick = () => dettaglio(b.dataset.id, { aggiungi: scelto ? () => scelto(b.dataset.id) : null, indietro: () => scegliEsercizio(undefined, scelto) })));
     };
-    $("#q", m).oninput = () => { limite = 60; mostra(); };
-    $("#cat", m).onchange = $("#att", m).onchange = () => { limite = 60; mostra(); };
-    $("#altri", m).onclick = () => { limite += 60; mostra(); };
-    $$("[data-m]", m).forEach((b) => (b.onclick = () => { filtro = filtro === b.dataset.m ? null : b.dataset.m; limite = 60; $$("[data-m]", m).forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === filtro)); mostra(); }));
+    $("#q", m).oninput = (e) => { st.q = e.target.value; st.limite = 40; mostra(); };
+    $("#cat", m).onchange = (e) => { st.cat = e.target.value; st.limite = 40; mostra(); };
+    $("#att", m).onchange = (e) => { st.att = e.target.value; st.limite = 40; mostra(); };
+    $("#altri", m).onclick = () => { st.limite += 40; mostra(); };
+    $$("[data-m]", m).forEach((b) => (b.onclick = () => { st.filtro = st.filtro === b.dataset.m ? null : b.dataset.m; st.limite = 40; $$("[data-m]", m).forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === st.filtro)); mostra(); }));
     mostra();
   });
 }
-export function dettaglio(id) {
+export function dettaglio(id, azioni = {}) {
   const e = es(id);
-  apriModale(`<div class="stack"><div class="row between"><h2>${esc(e.n)}</h2><button class="btn piccolo" data-chiudi>Chiudi</button></div>
-  ${e.img?.length ? `<div style="position:relative">${imgEs(e.img[0], "esercizio-img", e.n)}${e.img[1] ? `<div style="position:absolute;inset:0" id="anim">${imgEs(e.img[1], "esercizio-img", "")}</div>` : ""}</div><p class="xs muted">Le due posizioni si alternano come un'animazione.</p>` : ""}
+  apriModale(`<div class="stack">${azioni.indietro ? `<button class="btn testo xs" id="indietro" style="align-self:flex-start">‹ Torna alla lista</button>` : ""}<div class="row between"><h2>${esc(e.n)}</h2><button class="btn piccolo" data-chiudi>Chiudi</button></div>
+  ${e.img?.length ? `<div style="position:relative">${imgEs(e.img[0], "esercizio-img", e.n)}${e.img[1] ? `<div style="position:absolute;inset:0" id="anim">${imgEs(e.img[1], "esercizio-img", "")}</div>` : ""}</div><div class="row between"><p class="xs muted">Partenza e arrivo si alternano.</p><button class="btn testo xs" id="pausa-anim">Pausa</button></div>
+  ${e.img[1] ? `<div class="grid2">${imgEs(e.img[0], "esercizio-img", "Posizione iniziale")}${imgEs(e.img[1], "esercizio-img", "Posizione finale")}</div>` : ""}` : ""}
+  ${azioni.aggiungi ? `<div class="barra-azione"><button class="btn primario pieno grande" id="aggiungi">Aggiungi alla scheda</button></div>` : ""}
   <div class="row wrap" style="gap:6px">${e.p.map((m) => `<span class="chip" aria-pressed="true">${NOMI[m]}</span>`).join("")}${e.s.map((m) => `<span class="chip">${NOMI[m]}</span>`).join("")}</div>
   <p class="small muted">${esc(e.a)} · ${esc(e.l)} · ${esc(e.c || "")} · recupero consigliato ${fmtRec(e.r || 90)}</p>
   <h3>Come si fa (testo originale in inglese)</h3><ol class="small" style="padding-left:20px;margin:0">${(e.i || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ol>
   <p class="xs muted">Immagini e istruzioni: Free Exercise DB (pubblico dominio). Per la tecnica in italiano chiedi all'assistente.</p></div>`, (m) => {
+    $("#indietro", m) && ($("#indietro", m).onclick = azioni.indietro);
+    $("#aggiungi", m) && ($("#aggiungi", m).onclick = azioni.aggiungi);
     const a = $("#anim", m); if (!a) return;
-    let on = false; const t = setInterval(() => { if (!document.body.contains(a)) return clearInterval(t); on = !on; a.style.opacity = on ? 1 : 0; }, 900);
+    let on = false, ferma = false; const t = setInterval(() => { if (!document.body.contains(a)) return clearInterval(t); if (ferma) return; on = !on; a.style.opacity = on ? 1 : 0; }, 1000);
+    $("#pausa-anim", m).onclick = (ev) => { ferma = !ferma; ev.target.textContent = ferma ? "Riprendi" : "Pausa"; };
     a.style.transition = "opacity .3s"; a.style.opacity = 0;
   });
 }

@@ -8,7 +8,7 @@ const DOC = {
 <h4>1. Chi tratta i tuoi dati</h4><p>Titolare: <b>${T}</b>, persona privata, ${IND}, Svizzera. Contatto: <a href="mailto:${EM}">${EM}</a>. T.E.S.T.O. è un'app gratuita in fase di prova, usata da un piccolo gruppo di persone invitate. Questa informativa segue la Legge federale sulla protezione dei dati (LPD).</p>
 <h4>2. Quali dati</h4><ul>
 <li><b>Account:</b> email e password (salvata solo cifrata).</li>
-<li><b>Profilo:</b> anno di nascita, sesso, obiettivo, livello, allenamenti a settimana, orari della giornata, abitudini (pesce, alimentazione vegana, caffeina).</li>
+<li><b>Profilo:</b> username (nome scelto da te), anno di nascita, sesso, obiettivo, tipo di allenamento, livello, allenamenti a settimana, orari della giornata, abitudini (pesce, alimentazione vegana, caffeina, pasti uguali, cibi preferiti o da evitare).</li>
 <li><b>Dati sulla salute</b> (solo con il tuo consenso esplicito): peso, altezza, infortuni o limitazioni.</li>
 <li><b>Uso dell'app:</b> calendario, allenamenti (esercizi, serie, carichi), diario alimentare, consensi dati con data e versione.</li>
 <li><b>Notifiche:</b> l'indirizzo tecnico del tuo telefono per i promemoria.</li>

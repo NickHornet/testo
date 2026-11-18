@@ -8,7 +8,7 @@ const RECUPERI = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300];
 const fmtRec = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min` : `${s} s`);
 const recDi = (e) => +e.recupero || es(e.id).r || 90;
 const selRec = (attr, val) => `<select ${attr} aria-label="Recupero">${RECUPERI.map((r) => `<option value="${r}" ${+val === r ? "selected" : ""}>${fmtRec(r)}</option>`).join("")}</select>`;
-const R = (id, serie, rip) => ({ id, serie, ripetizioni: rip });
+const R = (id, serie, rip, recupero) => ({ id, serie, ripetizioni: rip, ...(recupero ? { recupero } : {}) });
 const PARTENZA = {
   fb: [
     { nome: "Full body A", esercizi: [R("Barbell_Squat", 3, "6-8"), R("Barbell_Bench_Press_-_Medium_Grip", 3, "6-8"), R("Bent_Over_Barbell_Row", 3, "8-10"), R("Seated_Dumbbell_Press", 2, "8-12"), R("Lying_Leg_Curls", 2, "10-12"), R("Cable_Crunch", 2, "10-15")] },
@@ -28,10 +28,43 @@ const PARTENZA = {
     { nome: "Lower", esercizi: [R("Front_Barbell_Squat", 3, "6-8"), R("Barbell_Hip_Thrust", 3, "8-12"), R("Bodyweight_Walking_Lunge", 3, "10-12"), R("Leg_Extensions", 3, "12-15"), R("Seated_Calf_Raise", 3, "12-15")] },
   ],
 };
+// schede di partenza per chi non fa bodybuilding
+const ALTRE = {
+  calisthenics: {
+    pochi: [
+      { nome: "Corpo libero A", esercizi: [R("Pullups", 4, "4-8", 150), R("Pushups", 4, "8-15", 90), R("Bodyweight_Squat", 3, "15-25", 90), R("Inverted_Row", 3, "8-12", 90), R("Dips_-_Chest_Version", 3, "6-12", 120), R("Hanging_Leg_Raise", 3, "8-12", 60)] },
+      { nome: "Corpo libero B", esercizi: [R("Chin-Up", 4, "4-8", 150), R("Push-Ups_With_Feet_Elevated", 3, "8-12", 90), R("Split_Squats", 3, "8-12", 90), R("Handstand_Push-Ups", 3, "3-8", 150), R("Single_Leg_Glute_Bridge", 3, "10-15", 60), R("Plank", 3, "30-60 s", 60)] },
+    ],
+    tanti: [
+      { nome: "Spinta (corpo libero)", esercizi: [R("Pushups", 4, "8-15", 90), R("Dips_-_Chest_Version", 4, "6-12", 120), R("Handstand_Push-Ups", 3, "3-8", 150), R("Push-Ups_-_Close_Triceps_Position", 3, "8-15", 90), R("Plank", 3, "30-60 s", 60)] },
+      { nome: "Tirata (corpo libero)", esercizi: [R("Pullups", 4, "4-8", 150), R("Chin-Up", 3, "5-10", 120), R("Inverted_Row", 3, "8-12", 90), R("Hanging_Leg_Raise", 3, "8-12", 60)] },
+      { nome: "Gambe (corpo libero)", esercizi: [R("Bodyweight_Squat", 3, "15-25", 90), R("Split_Squats", 3, "8-12", 90), R("Freehand_Jump_Squat", 3, "6-8", 120), R("Natural_Glute_Ham_Raise", 3, "3-8", 120), R("Single_Leg_Glute_Bridge", 3, "10-15", 60), R("Calf_Raise_On_A_Dumbbell", 3, "12-20", 60)] },
+    ],
+  },
+  powerlifting: {
+    pochi: [
+      { nome: "Forza A (squat, panca)", esercizi: [R("Barbell_Squat", 4, "3-5", 240), R("Barbell_Bench_Press_-_Medium_Grip", 4, "3-5", 240), R("Bent_Over_Barbell_Row", 3, "6-8", 150), R("Lying_Leg_Curls", 2, "8-12", 90)] },
+      { nome: "Forza B (stacco, panca)", esercizi: [R("Barbell_Deadlift", 3, "3-5", 240), R("Close-Grip_Barbell_Bench_Press", 3, "5-6", 180), R("Front_Barbell_Squat", 3, "5", 180), R("Pullups", 3, "6-8", 120), R("Plank", 3, "30-45 s", 60)] },
+    ],
+    tanti: [
+      { nome: "Squat pesante", esercizi: [R("Barbell_Squat", 5, "3-5", 240), R("Romanian_Deadlift", 3, "6-8", 150), R("Leg_Press", 2, "8-10", 120), R("Hanging_Leg_Raise", 3, "8-12", 60)] },
+      { nome: "Panca pesante", esercizi: [R("Barbell_Bench_Press_-_Medium_Grip", 5, "3-5", 240), R("Barbell_Shoulder_Press", 3, "5-8", 150), R("Bent_Over_Barbell_Row", 3, "6-8", 150), R("Triceps_Pushdown_-_Rope_Attachment", 3, "10-12", 90)] },
+      { nome: "Stacco pesante", esercizi: [R("Barbell_Deadlift", 4, "2-4", 240), R("Front_Barbell_Squat", 3, "4-6", 180), R("Good_Morning", 3, "6-8", 120), R("Pullups", 3, "6-8", 120)] },
+      { nome: "Panca volume", esercizi: [R("Close-Grip_Barbell_Bench_Press", 4, "5-6", 180), R("Incline_Dumbbell_Press", 3, "8-10", 120), R("Seated_Cable_Rows", 3, "8-12", 90), R("Barbell_Curl", 2, "8-12", 90)] },
+    ],
+  },
+  pesistica: {
+    pochi: [
+      { nome: "Strappo", esercizi: [R("Power_Snatch", 5, "2-3", 180), R("Snatch_Pull", 3, "3", 180), R("Overhead_Squat", 3, "3-5", 150), R("Front_Barbell_Squat", 4, "3-5", 180)] },
+      { nome: "Slancio", esercizi: [R("Power_Clean", 5, "2-3", 180), R("Push_Press", 4, "3-5", 180), R("Barbell_Squat", 4, "3-5", 180), R("Romanian_Deadlift", 3, "5-6", 150), R("Pullups", 3, "6-8", 120)] },
+    ],
+  },
+};
 async function creaPartenza() {
   const n = +S.profilo?.allenamenti_sett || 3;
   const giorni = giorniAllenamento(n);
-  const base = n <= 3 ? PARTENZA.fb : n === 4 ? PARTENZA.ul : PARTENZA.ppl;
+  const st = ALTRE[S.profilo?.stile];
+  const base = st ? (n <= 3 || !st.tanti ? st.pochi : st.tanti) : n <= 3 ? PARTENZA.fb : n === 4 ? PARTENZA.ul : PARTENZA.ppl;
   await prova(async () => { for (let i = 0; i < giorni.length; i++) { const b = base[i % base.length]; await db.salvaScheda({ nome: b.nome, giorno: giorni[i], esercizi: b.esercizi }); } }, "Schede di partenza create.");
 }
 
@@ -39,9 +72,10 @@ const sessioneCorrente = () => { try { return JSON.parse(localStorage.getItem("t
 const salvaCorrente = (s) => (s ? localStorage.setItem("testo_sessione", JSON.stringify(s)) : localStorage.removeItem("testo_sessione"));
 
 export async function render(el, param) {
+  if (param?.startsWith("s-")) return storico(el, param.slice(2));
   if (param) return editor(el, param);
   el.innerHTML = `<main class="stack"><p class="muted">Caricamento…</p></main>`;
-  const [schede, recenti] = await Promise.all([prova(() => db.schede()), prova(() => db.sessioniRecenti(8))]);
+  const [schede, recenti] = await Promise.all([prova(() => db.schede()), prova(() => db.sessioniRecenti(15))]);
   const ch = oraCH();
   const diOggi = (schede || []).filter((s) => s.giorno === ch.giorno);
   const inCorso = sessioneCorrente();
@@ -54,7 +88,7 @@ export async function render(el, param) {
   ${ord.length ? `<ul class="lista card piatta">${ord.map((s) => `<li class="row between"><a href="#allenamento/${s.id}" style="color:inherit;text-decoration:none;flex:1"><b>${esc(s.nome)}</b><br><span class="xs muted">${s.giorno != null ? GIORNI_L[s.giorno] : "Giorno libero"} · ${s.esercizi.length} esercizi</span></a><button class="btn piccolo" data-inizia="${s.id}">Inizia</button></li>`).join("")}</ul>`
     : `<div class="card stack-s"><p class="small">Non hai ancora schede. Posso crearne di partenza in base ai tuoi ${S.profilo?.allenamenti_sett || 3} allenamenti a settimana, oppure chiedile all'assistente.</p><button class="btn primario pieno" id="partenza">Crea schede di partenza</button><a class="btn pieno" href="#assistente">Chiedi all'assistente</a></div>`}
   <button class="btn pieno" id="libero">Allenamento libero</button></section>
-  ${(recenti || []).length ? `<section class="stack-s"><h3>Ultimi allenamenti</h3><ul class="lista card piatta">${recenti.map((r) => `<li class="row between"><span><b>${esc(r.nome || "Allenamento")}</b><br><span class="xs muted">${new Date(r.inizio).toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long" })}${r.fine ? "" : " · non chiuso"}</span></span></li>`).join("")}</ul></section>` : ""}
+  ${(recenti || []).length ? `<section class="stack-s"><h3>Ultimi allenamenti</h3><ul class="lista card piatta">${recenti.map((r) => `<li><a class="row between" href="#allenamento/s-${r.id}" style="color:inherit;text-decoration:none"><span><b>${esc(r.nome || "Allenamento")}</b><br><span class="xs muted">${new Date(r.inizio || r.creato).toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long" })}${r.fine ? "" : " · non chiuso"}</span></span><span class="red">›</span></a></li>`).join("")}</ul></section>` : ""}
   </main>`;
   $$("[data-inizia]", el).forEach((b) => (b.onclick = () => inizia((schede || []).find((s) => s.id === b.dataset.inizia))));
   $("#partenza") && ($("#partenza").onclick = async () => { await creaPartenza(); render(el); });
@@ -205,8 +239,12 @@ export function dettaglio(id, azioni = {}) {
   ${azioni.aggiungi ? `<div class="barra-azione"><button class="btn primario pieno grande" id="aggiungi">Aggiungi alla scheda</button></div>` : ""}
   <div class="row wrap" style="gap:6px">${e.p.map((m) => `<span class="chip" aria-pressed="true">${NOMI[m]}</span>`).join("")}${e.s.map((m) => `<span class="chip">${NOMI[m]}</span>`).join("")}</div>
   <p class="small muted">${esc(e.a)} · ${esc(e.l)} · ${esc(e.c || "")} · recupero consigliato ${fmtRec(e.r || 90)}</p>
-  <h3>Come si fa (testo originale in inglese)</h3><ol class="small" style="padding-left:20px;margin:0">${(e.i || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ol>
-  <p class="xs muted">Immagini e istruzioni: Free Exercise DB (pubblico dominio). Per la tecnica in italiano chiedi all'assistente.</p></div>`, (m) => {
+  <h3>Come si fa</h3><p class="xs muted" id="tr-stato">${(e.i || []).length ? "Traduzione in italiano…" : ""}</p><ol class="small" id="istr" style="padding-left:20px;margin:0">${(e.i || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ol>
+  <p class="xs muted">Immagini e istruzioni: Free Exercise DB (pubblico dominio), tradotte in italiano automaticamente. Per correggere la tecnica chiedi all'assistente.</p></div>`, (m) => {
+    if ((e.i || []).length) db.traduzione(e.id).then((t) => {
+      const ol = $("#istr", m), st = $("#tr-stato", m); if (!ol) return;
+      if (t) { ol.innerHTML = t.map((x) => `<li>${esc(x)}</li>`).join(""); st.remove(); } else st.textContent = "Traduzione non disponibile ora: testo originale in inglese.";
+    }).catch(() => { const st = $("#tr-stato", m); if (st) st.textContent = "Testo originale in inglese."; });
     $("#indietro", m) && ($("#indietro", m).onclick = azioni.indietro);
     $("#aggiungi", m) && ($("#aggiungi", m).onclick = azioni.aggiungi);
     const a = $("#anim", m); if (!a) return;
@@ -214,4 +252,45 @@ export function dettaglio(id, azioni = {}) {
     $("#pausa-anim", m).onclick = (ev) => { ferma = !ferma; ev.target.textContent = ferma ? "Riprendi" : "Pausa"; };
     a.style.transition = "opacity .3s"; a.style.opacity = 0;
   });
+}
+
+// ---------- allenamento già fatto: vedi, correggi, elimina ----------
+async function storico(el, sid) {
+  el.innerHTML = `<main class="stack"><p class="muted">Caricamento…</p></main>`;
+  const [recenti, serie] = await Promise.all([prova(() => db.sessioniRecenti(60)), prova(() => db.serieDellaSessione(sid))]);
+  const sess = (recenti || []).find((r) => String(r.id) === String(sid));
+  if (!sess) { el.innerHTML = `<main class="stack"><a class="btn testo xs" href="#allenamento">‹ Allenamento</a><p>Allenamento non trovato.</p></main>`; return; }
+  const gruppi = [];
+  for (const r of (serie || []).sort((a, b) => (a.creato < b.creato ? -1 : 1))) {
+    let g = gruppi.find((x) => x.id === r.esercizio); if (!g) gruppi.push((g = { id: r.esercizio, righe: [] })); g.righe.push(r);
+  }
+  const inizio = new Date(sess.inizio || sess.creato), fine = sess.fine ? new Date(sess.fine) : null;
+  const durata = fine ? Math.round((fine - inizio) / 60000) : null;
+  const volume = (serie || []).reduce((t, r) => t + (+r.kg || 0) * (+r.ripetizioni || 0), 0);
+  el.innerHTML = `<main class="stack">
+  <a class="btn testo xs" href="#allenamento" style="align-self:flex-start">‹ Allenamento</a>
+  <header class="stack-s"><label>Nome<input id="nome-s" value="${esc(sess.nome || "Allenamento")}" maxlength="60"></label>
+  <p class="small muted">${inizio.toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${inizio.toLocaleTimeString("it-CH", { hour: "2-digit", minute: "2-digit" })}${durata != null ? ` · ${durata} min` : " · non chiuso"}</p></header>
+  <div class="kpi"><div><b class="mono">${gruppi.length}</b><span>esercizi</span></div><div><b class="mono">${(serie || []).length}</b><span>serie</span></div><div><b class="mono">${volume >= 1000 ? (volume / 1000).toFixed(1) + "t" : Math.round(volume) + "kg"}</b><span>volume</span></div></div>
+  ${gruppi.length ? gruppi.map((g) => { const x = es(g.id); return `<section class="card stack-s"><div class="row">${x.img?.[0] ? `<button class="vedi-es" data-vedi="${esc(g.id)}">${imgEs(x.img[0], "miniatura grande", x.n)}</button>` : ""}<b style="flex:1">${esc(x.n)}</b></div>
+    <div class="row xs muted" style="gap:8px"><span style="width:22px">#</span><span style="flex:1">kg</span><span style="flex:1">ripetizioni</span><span style="width:40px"></span></div>
+    <ul class="lista">${g.righe.map((r, i) => `<li class="row" data-riga="${r.id}" style="gap:8px;padding:6px 0"><span class="mono xs muted" style="width:22px">${i + 1}</span>
+    <input data-k="kg" inputmode="decimal" aria-label="kg serie ${i + 1}" value="${esc(r.kg ?? "")}" style="flex:1;min-width:0"><input data-k="ripetizioni" inputmode="numeric" aria-label="ripetizioni serie ${i + 1}" value="${esc(r.ripetizioni ?? "")}" style="flex:1;min-width:0">
+    <button class="btn testo" data-elimina="${r.id}" aria-label="Elimina serie">${icona("cestino", 18)}</button></li>`).join("")}</ul></section>`; }).join("") : `<p class="small muted">In questo allenamento non è stata registrata nessuna serie.</p>`}
+  <p class="xs muted">Modifica kg o ripetizioni e tocca fuori dal campo: si salva da solo.</p>
+  <button class="btn pieno warn" id="elimina-s">${icona("cestino", 16)} Elimina questo allenamento</button>
+  </main>`;
+  $$("[data-vedi]", el).forEach((b) => (b.onclick = () => dettaglio(b.dataset.vedi)));
+  $("#nome-s").onchange = (e) => prova(() => db.modificaSessione(sid, { nome: e.target.value.trim() || "Allenamento" }), "Nome aggiornato.");
+  $$("[data-riga] input", el).forEach((inp) => (inp.onchange = () => {
+    const id = inp.closest("[data-riga]").dataset.riga; const v = inp.value.trim().replace(",", ".");
+    const n = v === "" ? null : Number(v); if (v !== "" && (!isFinite(n) || n < 0)) return avviso("Inserisci un numero valido.");
+    prova(() => db.modificaSerie(id, { [inp.dataset.k]: inp.dataset.k === "ripetizioni" && n != null ? Math.round(n) : n }), "Serie corretta.");
+  }));
+  $$("[data-elimina]", el).forEach((b) => (b.onclick = async () => { if (await conferma("Eliminare questa serie?", "Elimina", true)) { await prova(() => db.eliminaSerie(b.dataset.elimina), "Serie eliminata."); storico(el, sid); } }));
+  $("#elimina-s").onclick = async () => {
+    if (!(await conferma("Eliminare tutto questo allenamento con le sue serie? Non si può annullare.", "Elimina", true))) return;
+    const ok = await prova(() => db.eliminaSessione(sid), "Allenamento eliminato.");
+    if (ok !== undefined) { const c = sessioneCorrente(); if (c && String(c.id) === String(sid)) salvaCorrente(null); location.hash = "#allenamento"; }
+  };
 }

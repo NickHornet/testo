@@ -95,7 +95,10 @@ export async function profilo() {
 export async function salvaProfilo(p) {
   if (!ONLINE) { L.set("profilo", { ...(L.get("profilo", {}) || {}), ...p }); return; }
   const u = await utente();
-  const { error } = await sb.from("profili").upsert({ ...p, user_id: u.id, aggiornato: new Date().toISOString() }); err(error);
+  const { error } = await sb.from("profili").upsert({ ...p, user_id: u.id, aggiornato: new Date().toISOString() });
+  if (error?.code === "23505") throw new Error("Questo username è già usato da un'altra persona: scegline un altro.");
+  if (error?.code === "23514" && /username/.test(error.message)) throw new Error("Username non valido: 3-20 caratteri, solo lettere, numeri, _ e punto.");
+  err(error);
 }
 export async function consensi() {
   const r = await lista("consensi", (q) => q, { col: "creato", asc: true });
@@ -133,12 +136,14 @@ export const eliminaScheda = (id) => elimina("schede", id);
 export const iniziaSessione = (s) => inserisci("sessioni", s);
 export const chiudiSessione = (id) => aggiorna("sessioni", id, { fine: new Date().toISOString() });
 export const eliminaSessione = (id) => elimina("sessioni", id);
+export const modificaSessione = (id, c) => aggiorna("sessioni", id, c);
 export async function sessioniRecenti(n = 10) {
   if (!ONLINE) return L.get("sessioni", []).slice(-n).reverse();
   const { data, error } = await sb.from("sessioni").select("*").order("inizio", { ascending: false }).limit(n); err(error); return data;
 }
 export async function aggiungiSerie(r) { return inserisci("serie", r); }
 export async function eliminaSerie(id) { return elimina("serie", id); }
+export async function modificaSerie(id, c) { return aggiorna("serie", id, c); }
 export async function serieDellaSessione(sid) {
   if (!ONLINE) return L.get("serie", []).filter((s) => s.sessione_id === sid);
   const { data, error } = await sb.from("serie").select("*").eq("sessione_id", sid).order("numero"); err(error); return data;
@@ -154,6 +159,16 @@ export async function ultimaVolta(esercizio, escludiSessione) {
   if (!righe.length) return [];
   const sid = righe[0].sessione_id;
   return righe.filter((r) => r.sessione_id === sid).sort((a, b) => a.numero - b.numero);
+}
+// istruzioni in italiano: prima dal telefono, poi dalla tabella condivisa, altrimenti le traduce il server (una volta per tutti)
+export async function traduzione(esercizio) {
+  const k = "tr_" + esercizio; const c = L.get(k, null); if (c) return c;
+  if (!ONLINE) return null;
+  const { data } = await sb.from("traduzioni").select("testo").eq("esercizio", esercizio).maybeSingle();
+  let testo = data?.testo;
+  if (!testo) { const r = await sb.functions.invoke("assistente?traduci=1", { body: { esercizio } }); testo = r.data?.testo; }
+  if (Array.isArray(testo) && testo.length) { L.set(k, testo); return testo; }
+  return null;
 }
 export async function serieDal(dataISO) {
   if (!ONLINE) return L.get("serie", []).filter((s) => s.creato >= dataISO);

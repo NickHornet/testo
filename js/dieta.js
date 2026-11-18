@@ -2,7 +2,18 @@ import * as db from "./db.js";
 import { S, $, $$, esc, avviso, apriModale, chiudiModale, conferma, prova, icona, oraCH, isoData } from "./ui.js";
 import { alimenti, cerca, fabbisogno, riferimenti, somma, consigliIntegratori, DA_EVITARE } from "./nutrizione.js";
 
-const PASTI = [["colazione", "Colazione"], ["spuntino", "Spuntino"], ["pranzo", "Pranzo"], ["merenda", "Merenda"], ["cena", "Cena"]];
+const FISSI = [["colazione", "Colazione"], ["pranzo", "Pranzo"], ["cena", "Cena"]];
+// spuntini: quanti ne vuoi. Nel diario si chiamano "spuntino-1", "spuntino-2"…; i vecchi "spuntino" e "merenda" restano visibili.
+const chiaveSpuntini = (data) => "testo_spuntini_" + data;
+function pastiDelGiorno(righe, data) {
+  const usati = [...new Set((righe || []).map((r) => r.pasto).filter((k) => !FISSI.some(([f]) => f === k)))];
+  let extra = 0; try { extra = +localStorage.getItem(chiaveSpuntini(data)) || 0; } catch {}
+  const numeri = usati.map((k) => +(k.match(/^spuntino-(\d+)$/)?.[1] || 0)).filter(Boolean);
+  const vecchi = usati.filter((k) => !/^spuntino-\d+$/.test(k));
+  const quanti = Math.max(extra, ...numeri, 0);
+  const sp = [...vecchi.map((k) => [k, k === "merenda" ? "Merenda" : "Spuntino"]), ...Array.from({ length: quanti }, (_, i) => [`spuntino-${i + 1}`, `Spuntino ${i + 1}`])];
+  return { lista: [...FISSI, ...sp], prossimo: quanti + 1 };
+}
 const r0 = (x) => Math.round(x || 0), r1 = (x) => Math.round((x || 0) * 10) / 10;
 
 export async function render(el, param) {
@@ -13,6 +24,7 @@ export async function render(el, param) {
   try { A = await alimenti(); } catch { el.innerHTML = `<main class="stack"><p>Banca dati degli alimenti non disponibile.</p></main>`; return; }
   const [righe, voci] = await Promise.all([prova(() => db.diario(data)), prova(() => db.voci())]);
   const p = S.profilo || {};
+  const PASTI = pastiDelGiorno(righe, data);
   const f = fabbisogno(p);
   const rif = riferimenti(p, f);
   const t = somma(righe || [], A.mappa);
@@ -31,10 +43,12 @@ export async function render(el, param) {
   <details class="card"><summary class="row between" style="cursor:pointer"><h3>Vitamine e minerali</h3><span class="xs muted">D-A-CH</span></summary><ul class="lista">
   ${riga("Vitamina D", t.vd, rif.vd, "µg")}${riga("Vitamina B12", t.b12, rif.b12, "µg")}${riga("Vitamina C", t.vc, rif.vc, "mg")}${riga("Calcio", t.ca, rif.ca, "mg")}${riga("Ferro", t.fe, rif.fe, "mg")}${riga("Magnesio", t.mg, rif.mg, "mg")}${riga("Potassio", t.k, rif.k, "mg")}</ul>
   <p class="xs muted">La vitamina D viene soprattutto dal sole, non dal cibo: per questo è quasi sempre bassa nel diario.</p></details>
-  ${PASTI.map(([k, n]) => { const rr = (righe || []).filter((r) => r.pasto === k); const kc = rr.reduce((s, r) => s + (A.mappa.get(r.alimento)?.kcal || 0) * r.grammi / 100, 0);
+  ${!(righe || []).length ? `<button class="btn pieno" id="copia-ieri">Copia tutti i pasti di ieri</button>` : ""}
+  ${PASTI.lista.map(([k, n]) => { const rr = (righe || []).filter((r) => r.pasto === k); const kc = rr.reduce((s, r) => s + (A.mappa.get(r.alimento)?.kcal || 0) * r.grammi / 100, 0);
     return `<section class="card stack-s"><div class="row between"><h2>${n}</h2><span class="mono small muted">${r0(kc)} kcal</span></div>
     ${rr.length ? `<ul class="lista">${rr.map((r) => { const a = A.mappa.get(r.alimento); return `<li class="row between"><span class="small" style="flex:1">${esc(a?.n || r.alimento)}<br><span class="xs muted mono">${r0(r.grammi)} g · ${r0((a?.kcal || 0) * r.grammi / 100)} kcal · P ${r1((a?.p || 0) * r.grammi / 100)} g</span></span><button class="btn testo" data-del="${r.id}" aria-label="Togli">${icona("cestino", 18)}</button></li>`; }).join("")}</ul>` : ""}
-    <button class="btn piccolo" data-agg="${k}">${icona("piu", 14)} Aggiungi alimento</button></section>`; }).join("")}
+    <div class="row between"><div class="row" style="gap:6px"><button class="btn piccolo" data-agg="${k}">${icona("piu", 14)} Aggiungi</button><button class="btn piccolo" data-copia="${k}" data-nome="${esc(n)}">Copia da…</button></div>${k === `spuntino-${PASTI.prossimo - 1}` && !rr.length ? `<button class="btn testo xs" data-togli-sp>Togli</button>` : ""}</div></section>`; }).join("")}
+  <button class="btn pieno" id="nuovo-sp">${icona("piu", 16)} Aggiungi uno spuntino</button>
   <section class="card stack-s"><div class="row between"><h2>Integratori e vitamine</h2><span class="etichetta red">FACOLTATIVI</span></div>
   ${giaIntegratori.length ? `<h3>Nella tua giornata</h3><ul class="lista">${giaIntegratori.map((v) => `<li class="row between small"><span><b>${esc(v.titolo)}</b><br><span class="xs muted">${esc(v.dettaglio || "")}</span></span><span class="mono">${esc(v.ora)}</span></li>`).join("")}</ul>` : ""}
   ${cons.length ? `<h3>Consigliati per te</h3><p class="xs muted">Basati sugli studi e sul tuo profilo. Se ti interessano, aggiungili: finiscono nel calendario con il promemoria.</p>
@@ -46,6 +60,15 @@ export async function render(el, param) {
   <p class="xs muted">Quantità entro i limiti di sicurezza per adulti. In gravidanza, con malattie o farmaci chiedi prima al medico.</p></section>
   <p class="xs muted">Valori nutritivi: Banca dati svizzera dei valori nutritivi (USAV). Riferimenti: OMS per zuccheri, saturi, sale; D-A-CH per fibre, vitamine e minerali.</p></main>`;
   $$("[data-del]", el).forEach((b) => (b.onclick = async () => { await prova(() => db.eliminaAlimento(b.dataset.del)); render(el, data); }));
+  $("#nuovo-sp").onclick = () => { try { localStorage.setItem(chiaveSpuntini(data), PASTI.prossimo); } catch {} render(el, data).then(() => { const b = $$(`[data-agg="spuntino-${PASTI.prossimo}"]`, el)[0]; b?.scrollIntoView({ block: "center" }); }); };
+  $$("[data-togli-sp]", el).forEach((b) => (b.onclick = () => { try { localStorage.setItem(chiaveSpuntini(data), Math.max(0, PASTI.prossimo - 2)); } catch {} render(el, data); }));
+  $$("[data-copia]", el).forEach((b) => (b.onclick = () => copiaPasto(A, data, b.dataset.copia, b.dataset.nome, PASTI.lista, righe || [], sposta(-1), () => render(el, data))));
+  $("#copia-ieri") && ($("#copia-ieri").onclick = async () => {
+    const ieri = (await prova(() => db.diario(sposta(-1)))) || [];
+    if (!ieri.length) return avviso("Ieri non hai registrato nessun alimento.");
+    await prova(async () => { for (const r of ieri) await db.aggiungiAlimento({ data, pasto: r.pasto, alimento: r.alimento, grammi: r.grammi }); }, `Copiati ${ieri.length} alimenti da ieri.`);
+    render(el, data);
+  });
   $$("[data-agg]", el).forEach((b) => (b.onclick = () => aggiungi(A, data, b.dataset.agg, () => render(el, data))));
   $$("[data-int]", el).forEach((b) => (b.onclick = async () => {
     const c = cons[+b.dataset.int];
@@ -78,5 +101,26 @@ function aggiungi(A, data, pasto, dopo) {
       };
     };
     $("#q", m).oninput = mostra; mostra();
+  });
+}
+
+// copia un pasto da un altro pasto di oggi o dallo stesso pasto di ieri (per chi vuole mangiare sempre le stesse cose)
+async function copiaPasto(A, data, pasto, nome, lista, righe, ieri, dopo) {
+  const righeIeri = (await prova(() => db.diario(ieri))) || [];
+  const fonti = [];
+  for (const [k, n] of lista) {
+    const oggi = righe.filter((r) => r.pasto === k); if (k !== pasto && oggi.length) fonti.push({ t: `${n} di oggi`, r: oggi });
+  }
+  for (const [k, n] of lista) {
+    const ie = righeIeri.filter((r) => r.pasto === k); if (ie.length) fonti.push({ t: `${n} di ieri`, r: ie });
+  }
+  const kc = (rr) => Math.round(rr.reduce((s, r) => s + (A.mappa.get(r.alimento)?.kcal || 0) * r.grammi / 100, 0));
+  apriModale(`<div class="stack"><div class="row between"><h2>Copia in ${esc(nome)}</h2><button class="btn piccolo" data-chiudi>Chiudi</button></div>
+  ${fonti.length ? `<ul class="lista">${fonti.map((f, i) => `<li><button class="row between" data-f="${i}" style="width:100%;background:none;border:0;color:inherit;text-align:left;padding:6px 0"><span><b>${esc(f.t)}</b><br><span class="xs muted">${f.r.map((r) => `${esc(A.mappa.get(r.alimento)?.n || r.alimento)} ${Math.round(r.grammi)} g`).join(" · ")}</span></span><span class="mono xs">${kc(f.r)} kcal</span></button></li>`).join("")}</ul>` : `<p class="small muted">Non ci sono ancora pasti da copiare: registra prima un pasto, poi potrai ripeterlo uguale.</p>`}</div>`, (m) => {
+    $$("[data-f]", m).forEach((b) => (b.onclick = async () => {
+      const f = fonti[+b.dataset.f];
+      await prova(async () => { for (const r of f.r) await db.aggiungiAlimento({ data, pasto, alimento: r.alimento, grammi: r.grammi }); }, `${f.t} copiato in ${nome}.`);
+      chiudiModale(); dopo();
+    }));
   });
 }

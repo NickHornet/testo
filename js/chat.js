@@ -6,16 +6,34 @@ import { fabbisogno } from "./nutrizione.js";
 const CHIAVE = "testo_chat";
 const leggi = () => { try { return JSON.parse(sessionStorage.getItem(CHIAVE) || "[]"); } catch { return []; } };
 const scrivi = (m) => sessionStorage.setItem(CHIAVE, JSON.stringify(m.slice(-30)));
-const SUGGERIMENTI = ["Fammi una dieta per la massa adatta ai miei orari", "Crea una scheda di 4 giorni", "Quanti omega-3 dovrei prendere?", "Con la panca non sento il petto, cosa cambio?", "Quante proteine mi servono?"];
+const PER_STILE = {
+  bodybuilding: "Con la panca non sento il petto, cosa cambio?",
+  powerlifting: "Come imposto un ciclo per aumentare squat, panca e stacco?",
+  calisthenics: "Come arrivo alla prima trazione o al primo muscle-up?",
+  pesistica: "Come miglioro la tecnica dello strappo?",
+  fitness: "Quanto devo allenarmi a settimana per stare in salute?",
+  ibrido: "Come combino corsa e pesi senza perdere muscolo?",
+};
+const SUGGERIMENTI = () => ["Fammi una dieta in base al mio profilo e ai miei orari", "Crea una scheda adatta al mio profilo", PER_STILE[S.profilo?.stile] || PER_STILE.bodybuilding, "Quante proteine mi servono?", "Quali integratori hanno senso per me?"];
 
+// esercizi da mandare all'IA: i principali più quelli tipici del tipo di allenamento (max ~150 righe)
+function listaEsercizi() {
+  const st = S.profilo?.stile;
+  const extra = st === "calisthenics" ? (e) => e.a === "Corpo libero" && e.c === "Forza"
+    : st === "pesistica" ? (e) => e.c === "Sollevamento olimpico"
+    : st === "powerlifting" ? (e) => e.c === "Powerlifting"
+    : st === "ibrido" || st === "fitness" ? (e) => e.c === "Cardio" || e.c === "Pliometria" : () => false;
+  const l = S.esercizi.filter((e) => e.top).concat(S.esercizi.filter((e) => !e.top && extra(e)).slice(0, 60));
+  return l.map((e) => `${e.id} | ${e.n}`).join("\n");
+}
 function testoProfilo() {
   const p = S.profilo || {}, f = fabbisogno(p), c = S.consensi;
   const r = [`Età: ${p.anno_nascita ? new Date().getFullYear() - p.anno_nascita : "?"} anni`, `Sesso: ${p.sesso || "?"}`];
   if (c.salute?.accettato) { r.push(`Altezza: ${p.altezza_cm || "?"} cm`, `Peso: ${p.peso_kg || "?"} kg`); if (p.limitazioni) r.push(`Limitazioni: ${p.limitazioni}`); }
   else r.push("Dati sulla salute: non condivisi (dai solo indicazioni generali, niente calcoli personali di calorie)");
-  r.push(`Obiettivo: ${p.obiettivo}`, `Livello: ${p.livello}`, `Allenamenti a settimana: ${p.allenamenti_sett}`,
+  r.push(`Obiettivo: ${p.obiettivo}`, `Tipo di allenamento: ${p.stile || "bodybuilding"}`, `Livello: ${p.livello}`, `Allenamenti a settimana: ${p.allenamenti_sett}`,
     `Sveglia: ${p.sveglia || "?"}, a letto: ${p.a_letto || "?"}`, `Lavoro: ${p.lavoro_dalle ? `${p.lavoro_dalle}-${p.lavoro_alle}` : "non indicato"}`, `Pausa pranzo: ${p.pausa_pranzo || "?"}`,
-    `Ora allenamento: ${p.ora_allenamento || "?"}`, `Pesce a settimana: ${p.pesce_sett ?? "?"}`, `Vegano: ${p.vegano ? "sì" : "no"}`, `Caffeina: ${p.caffeina_ok === false ? "preferisce evitarla" : "ok"}`);
+    `Ora allenamento: ${p.ora_allenamento || "?"}`, `Pesce a settimana: ${p.pesce_sett ?? "?"}`, `Pasti uguali richiesti: ${p.pasti_uguali ? p.pasti_uguali.split(",").map((k) => ({ pranzo_cena: "pranzo e cena identici", colazione_sera: "colazione e spuntino serale identici", ogni_giorno: "stessi pasti ogni giorno" })[k]).join(", ") : "no, preferisce varietà"}`, `Cibi preferiti o da evitare: ${p.preferenze_cibo || "non indicati"}`, `Vegano: ${p.vegano ? "sì" : "no"}`, `Caffeina: ${p.caffeina_ok === false ? "preferisce evitarla" : "ok"}`);
   if (f && c.salute?.accettato) r.push(`Stima già calcolata dall'app: mantenimento ${f.mantenimento} kcal, obiettivo ${f.kcal} kcal, proteine ${f.p} g`);
   return r.join("\n");
 }
@@ -34,7 +52,7 @@ export async function render(el) {
   el.innerHTML = `<main class="stack">
   <header class="head"><div><h1>Assistente IA</h1><span class="etichetta">INTELLIGENZA ARTIFICIALE · STUDI DELL'ARCHIVIO</span></div><button class="btn piccolo" id="nuova">Nuova chat</button></header>
   ${avvisoVisto ? "" : `<section class="card stack-s" style="border-color:#FFB35C"><span class="etichetta warn">PRIMA DI INIZIARE</span><p class="small">Le risposte sono generate da un'<b>intelligenza artificiale</b> sulla base di studi scientifici. Possono contenere errori e non sostituiscono il parere di un medico o di un dietista.</p><button class="btn pieno" id="capito">Ho capito</button></section>`}
-  <div class="chat" id="chat">${msgs.length ? msgs.map(bolla).join("") : `<div class="stack-s"><p class="small muted">Prova a chiedere:</p>${SUGGERIMENTI.map((s) => `<button class="chip" data-s="${esc(s)}" style="justify-content:flex-start;text-align:left;min-height:40px">${esc(s)}</button>`).join("")}</div>`}</div>
+  <div class="chat" id="chat">${msgs.length ? msgs.map(bolla).join("") : `<div class="stack-s"><p class="small muted">Prova a chiedere:</p>${SUGGERIMENTI().map((s) => `<button class="chip" data-s="${esc(s)}" style="justify-content:flex-start;text-align:left;min-height:40px">${esc(s)}</button>`).join("")}</div>`}</div>
   <p class="xs muted" style="text-align:center">Assistente IA: le risposte possono contenere errori. Non è un parere medico. Su sostanze dopanti parla solo dei rischi per la salute.</p>
   <form id="f" class="row" style="position:sticky;bottom:calc(84px + env(safe-area-inset-bottom));background:var(--bg);padding:8px 0"><label class="sr" for="d">Domanda</label><textarea id="d" rows="1" placeholder="Chiedi all'assistente IA…" style="min-height:50px;height:50px"></textarea><button class="btn primario" aria-label="Invia" style="width:52px;flex:none">${icona("invia", 20)}</button></form></main>`;
   $("#capito") && ($("#capito").onclick = () => { localStorage.setItem("testo_avviso_ia", "1"); render(el); });
@@ -97,7 +115,7 @@ async function invia(el, testo) {
     const r = await db.chiediAssistente({
       messaggi: msgs.slice(-10).map((m) => ({ role: m.role, content: m.content })),
       note, profilo: testoProfilo(), oggi: `${GIORNI_L[ch.giorno]} ${ch.iso}`,
-      esercizi: S.esercizi.filter((e) => e.top).map((e) => `${e.id} | ${e.n}`).join("\n"),
+      esercizi: listaEsercizi(),
     });
     msgs.push({ role: "assistant", content: r.testo || "Nessuna risposta.", fonti: note.map((n) => n.t) });
   } catch (e) {

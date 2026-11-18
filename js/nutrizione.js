@@ -30,9 +30,9 @@ export function fabbisogno(p) {
   const bmr = 10 * w + 6.25 * h - 5 * a + (p.sesso === "donna" ? -161 : 5);
   const att = Math.min(1.75, 1.4 + 0.05 * (+p.allenamenti_sett || 0));
   const mant = bmr * att;
-  const fattore = { massa: 1.1, forza: 1.05, definizione: 0.8, mantenimento: 1 }[p.obiettivo] ?? 1;
+  const fattore = { massa: 1.1, forza: 1.05, definizione: 0.8, ricomposizione: 0.95, mantenimento: 1 }[p.obiettivo] ?? 1;
   const kcal = Math.round(mant * fattore / 10) * 10;
-  const gkg = { massa: 1.8, forza: 1.8, definizione: 2.2, mantenimento: 1.6 }[p.obiettivo] ?? 1.6;
+  const gkg = { massa: 1.8, forza: 1.8, definizione: 2.2, ricomposizione: 2.2, mantenimento: 1.6 }[p.obiettivo] ?? 1.6;
   const p_g = Math.round(w * gkg);
   const gr = Math.round(kcal * 0.25 / 9);
   const cho = Math.max(0, Math.round((kcal - p_g * 4 - gr * 9) / 4));
@@ -75,7 +75,7 @@ export function consigliIntegratori(p) {
   const pranzo = p?.pausa_pranzo || "12:30";
   const mese = new Date().getMonth() + 1;
   const peso = +p?.peso_kg || 75;
-  if (["massa", "forza", "mantenimento", "definizione"].includes(p?.obiettivo || "massa"))
+  if (["massa", "forza", "mantenimento", "definizione", "ricomposizione"].includes(p?.obiettivo || "massa"))
     out.push({ id: "creatina", titolo: "Creatina monoidrato", qty: "3-5 g", ora: colazione, stelle: "★★★", perche: "L'integratore con più prove per forza e massa muscolare. L'orario non conta: conta prenderla ogni giorno.", avviso: "", fonte: "ISSN 2017 · Integratori" });
   if (mese >= 10 || mese <= 3)
     out.push({ id: "vitd", titolo: "Vitamina D", qty: "800 UI (20 µg)", ora: colazione, stelle: "★★☆", perche: "Da ottobre a marzo in Svizzera il sole non basta per produrla. Si assorbe meglio con un pasto.", avviso: "Dosi più alte solo dopo gli esami del sangue.", fonte: "Tomlinson 2015 · D-A-CH" });

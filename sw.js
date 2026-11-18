@@ -1,5 +1,5 @@
 // T.E.S.T.O. – service worker: app anche senza rete, aggiornamenti automatici, notifiche
-const VERSIONE = "testo-v4";
+const VERSIONE = "testo-v6";
 const BASE = ["./", "index.html", "css/app.css", "js/app.js", "js/ui.js", "js/db.js", "js/corpo.js", "js/nutrizione.js", "js/assistente.js",
   "js/allenamento.js", "js/calendario.js", "js/dieta.js", "js/chat.js", "js/documenti.js", "js/supabase.js", "js/config.js",
   "dati/esercizi.json", "dati/alimenti.json", "dati/archivio.json", "manifest.webmanifest", "icone/icona-192.png"];

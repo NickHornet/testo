@@ -166,16 +166,20 @@ function nuovaPassword(el) {
 }
 
 // ---------------- profilo ----------------
+export const OBIETTIVI = [["massa", "Massa"], ["definizione", "Definizione"], ["ricomposizione", "Ricomposizione (meno grasso, più muscolo)"], ["mantenimento", "Mantenimento"], ["forza", "Forza"]];
+export const STILI = [["bodybuilding", "Bodybuilding (ipertrofia)"], ["powerlifting", "Powerlifting (squat, panca, stacco)"], ["calisthenics", "Calisthenics (corpo libero)"], ["pesistica", "Pesistica olimpica (strappo, slancio)"], ["fitness", "Fitness generale e salute"], ["ibrido", "Ibrido (pesi + corsa o sport)"]];
 function campiProfilo(p, salute) {
   const sel = (n, opts, v) => `<select name="${n}">${opts.map(([k, l]) => `<option value="${k}" ${String(v) === String(k) ? "selected" : ""}>${l}</option>`).join("")}</select>`;
   const ora = (n, l, v, aiuto = "") => `<label>${l}<input type="time" name="${n}" value="${esc(v || "")}">${aiuto ? `<span class="aiuto">${aiuto}</span>` : ""}</label>`;
   return `
   <section class="stack"><h3>Su di te</h3>
+  <label>Username<input name="username" value="${esc(p.username || "")}" placeholder="es. alfredo_lifts" autocomplete="nickname" autocapitalize="none" spellcheck="false" maxlength="20" pattern="[A-Za-z0-9_.]{3,20}"><span class="aiuto">Il tuo nome nell'app: 3-20 caratteri, lettere, numeri, _ e punto. In futuro sarà visibile agli altri nella parte social.</span></label>
   <div class="grid2"><label>Sesso${sel("sesso", [["uomo", "Uomo"], ["donna", "Donna"]], p.sesso || "uomo")}</label>
   <label>Anno di nascita<input name="anno_nascita" inputmode="numeric" value="${esc(p.anno_nascita || "")}" required></label></div>
   ${salute ? `<div class="grid2"><label>Altezza (cm)<input name="altezza_cm" inputmode="decimal" value="${esc(p.altezza_cm || "")}"></label><label>Peso (kg)<input name="peso_kg" inputmode="decimal" value="${esc(p.peso_kg || "")}"></label></div>` : `<p class="small muted">Peso, altezza e limitazioni si inseriscono solo con il consenso ai dati sulla salute (Profilo → Privacy).</p>`}
-  <div class="grid2"><label>Obiettivo${sel("obiettivo", [["massa", "Massa"], ["definizione", "Definizione"], ["mantenimento", "Mantenimento"], ["forza", "Forza"]], p.obiettivo || "massa")}</label>
+  <div class="grid2"><label>Obiettivo${sel("obiettivo", OBIETTIVI, p.obiettivo || "massa")}</label>
   <label>Livello${sel("livello", [["principiante", "Principiante"], ["intermedio", "Intermedio"], ["avanzato", "Avanzato"]], p.livello || "intermedio")}</label></div>
+  <label>Tipo di allenamento${sel("stile", STILI, p.stile || "bodybuilding")}<span class="aiuto">Serve per schede, consigli e risposte dell'assistente adatti a come ti alleni.</span></label>
   <label>Allenamenti a settimana${sel("allenamenti_sett", [0, 1, 2, 3, 4, 5, 6].map((n) => [n, n]), p.allenamenti_sett ?? 4)}</label>
   ${salute ? `<label>Infortuni o limitazioni (facoltativo)<textarea name="limitazioni" placeholder="Es. dolore alla spalla destra sopra la testa">${esc(p.limitazioni || "")}</textarea></label>` : ""}
   </section>
@@ -188,12 +192,18 @@ function campiProfilo(p, salute) {
   <div class="grid2"><label>Pesce a settimana${sel("pesce_sett", [0, 1, 2, 3, 4].map((n) => [n, n === 4 ? "4 o più" : n]), p.pesce_sett ?? 1)}</label>
   <label>Alimentazione${sel("vegano", [["false", "Onnivora / vegetariana"], ["true", "Vegana"]], String(!!p.vegano))}</label></div>
   <label>Caffeina${sel("caffeina_ok", [["true", "La tollero bene"], ["false", "Preferisco evitarla"]], String(p.caffeina_ok !== false))}</label>
+  <fieldset class="stack-s" style="border:0;padding:0;margin:0"><legend class="small" style="font-weight:600;margin-bottom:6px">Pasti uguali (se preferisci la semplicità)</legend>
+  ${[["pranzo_cena", "Pranzo e cena uguali"], ["colazione_sera", "Colazione e spuntino prima di dormire uguali"], ["ogni_giorno", "Stessi pasti tutti i giorni"]].map(([k, l]) => `<label class="check"><input type="checkbox" name="pu_${k}" ${(p.pasti_uguali || "").split(",").includes(k) ? "checked" : ""}> <span>${l}</span></label>`).join("")}
+  <span class="aiuto">L'assistente rispetterà la tua scelta anche se varia di solito è meglio: al massimo ti suggerirà una piccola aggiunta (verdura, frutta).</span></fieldset>
+  <label>Cibi preferiti o da evitare (facoltativo)<textarea name="preferenze_cibo" maxlength="300" placeholder="Es. mangio volentieri pollo e riso; non mi piace il pesce">${esc(p.preferenze_cibo || "")}</textarea></label>
   </section>`;
 }
 function leggiProfilo(f) {
   const d = Object.fromEntries(new FormData(f));
   const num = (v) => (v === "" || v == null ? null : Number(String(v).replace(",", ".")));
   return {
+    pasti_uguali: ["pranzo_cena", "colazione_sera", "ogni_giorno"].filter((k) => d["pu_" + k]).join(",") || null, preferenze_cibo: (d.preferenze_cibo || "").trim().slice(0, 300) || null,
+    username: (d.username || "").trim() || null, stile: d.stile || "bodybuilding",
     sesso: d.sesso, anno_nascita: num(d.anno_nascita), altezza_cm: num(d.altezza_cm), peso_kg: num(d.peso_kg),
     obiettivo: d.obiettivo, livello: d.livello, allenamenti_sett: num(d.allenamenti_sett),
     sveglia: d.sveglia || null, a_letto: d.a_letto || null, lavoro_dalle: d.lavoro_dalle || null, lavoro_alle: d.lavoro_alle || null,
@@ -388,7 +398,7 @@ async function oggi(el) {
   // ---- testi
   const ora = ch.minuti / 60;
   const saluto = ora < 5 ? "Notte fonda" : ora < 12 ? "Buongiorno" : ora < 18 ? "Buon pomeriggio" : "Buonasera";
-  const OBI = { massa: "Massa muscolare", forza: "Forza", definizione: "Definizione", mantenimento: "Mantenimento", salute: "Salute" };
+  const OBI = { massa: "Massa muscolare", forza: "Forza", definizione: "Definizione", ricomposizione: "Ricomposizione", mantenimento: "Mantenimento", salute: "Salute" };
   const CONSIGLI = [
     ["Vicino al cedimento", "Per crescere conta arrivare vicino al cedimento con buona tecnica, non sentire il muscolo bruciare.", "Tecnica ed esercizi"],
     ["10 serie a settimana", "Almeno 10 serie a settimana per muscolo, divise in 2 sedute: è la base delle linee guida.", "Volume e frequenza"],
@@ -418,7 +428,7 @@ async function oggi(el) {
   else hero = `<section class="hero"><span class="etichetta">PRIMO PASSO</span><h2 class="hero-tit">Costruiamo il tuo piano</h2><p class="small muted">Schede basate sugli studi, adattate ai tuoi ${obiettivoSett} allenamenti a settimana. Oppure fattele preparare dall'assistente.</p><div class="grid2"><a class="btn primario pieno" href="#allenamento">Crea le schede</a><a class="btn pieno" href="#assistente">Chiedi al coach</a></div></section>`;
 
   el.innerHTML = `<main class="stack home">
-  <header class="head"><div><span class="etichetta">${GIORNI_L[ch.giorno]} ${ch.data.getDate()}.${ch.data.getMonth() + 1} · ${OBI[p.obiettivo] || "T.E.S.T.O."}</span><h1>${saluto}</h1></div>${logo(42)}</header>
+  <header class="head"><div><span class="etichetta">${GIORNI_L[ch.giorno]} ${ch.data.getDate()}.${ch.data.getMonth() + 1} · ${OBI[p.obiettivo] || "T.E.S.T.O."}</span><h1>${saluto}${p.username ? `, <span class="red">${esc(p.username)}</span>` : ""}</h1></div>${logo(42)}</header>
   ${hero}
   <section class="card settimana"><div class="row between"><h3>La tua settimana</h3><span class="xs muted"><b class="mono" style="color:var(--ink)">${sessSett}</b> / ${obiettivoSett} allenamenti</span></div>
     <div class="giorni-sett">${giorniSett.map((d) => `<div class="gs ${d.fatto ? "fatto" : ""} ${d.oggi ? "oggi" : ""} ${d.previsto && !d.fatto ? "previsto" : ""}"><span>${GIORNI[d.g]}</span><i>${d.fatto ? icona("spunta", 14) : ""}</i></div>`).join("")}</div>
@@ -438,7 +448,6 @@ async function oggi(el) {
   ${top.length ? `<div class="row wrap" style="gap:6px">${top.slice(0, 8).map(([m, n]) => `<span class="chip" style="min-height:28px">${NOMI[m]} <b class="mono">${Math.round(n)}</b></span>`).join("")}</div>` : ""}
   ${deboli.length && top.length ? `<p class="xs muted">Sotto le 5 serie: ${deboli.map((m) => NOMI[m]).join(", ")}.</p>` : `<p class="xs muted" style="text-align:center">Serie della settimana (si azzera ogni lunedì). Obiettivo: almeno 10 per muscolo.</p>`}</section>
   <section class="consiglio"><span class="etichetta">CONSIGLIO DEL GIORNO</span><h2>${esc(cTit)}</h2><p class="small">${esc(cTesto)}</p><div class="row between"><span class="xs muted">Dall'archivio · ${esc(cFonte)}</span><a class="xs" href="#assistente" id="chiedi">Approfondisci ›</a></div></section>
-  <section class="azioni"><a href="#assistente">${icona("assistente", 22)}<span>Coach IA</span></a><a href="#dieta">${icona("dieta", 22)}<span>Pasto</span></a><a href="#allenamento">${icona("allenamento", 22)}<span>Schede</span></a><a href="#calendario">${icona("calendario", 22)}<span>Agenda</span></a></section>
   </main>`;
   $("#vai") && ($("#vai").onclick = () => allenamento.inizia(schedaOggi));
   $("#libero") && ($("#libero").onclick = () => allenamento.inizia({ id: null, nome: "Allenamento libero", esercizi: [] }));
